@@ -6,6 +6,7 @@ import pickle
 import copy
 from bidict import bidict
 from google.cloud import storage
+import io
 
 class course_staff():
     """
@@ -367,7 +368,7 @@ class state():
                     raise ValueError("bi_mappings do not match up between states. Stop.")
             prev = prev.prev_state
         
-    def serialize(self, states_folder):
+    def serialize(self, project_id, bucket_name, prefix=None):
         """Saves this object using pickle. Prev_state should not be referenced while this is serializing.
         As all previous states are deserialized as a result of this state being serialized, we recursively
         serialize each previous state as well.
@@ -376,18 +377,29 @@ class state():
             boolean: success or fail
         """
         if self.prev_state:
-            self.prev_state.serialize(states_folder)
+            self.prev_state.serialize(project_id, bucket_name, prefix)
         place_holder = self.prev_state
         self.prev_state = None
-        file_path = '{}/{}.pkl'.format(states_folder, self.week_num)
+        object_name = '{}/{}.pkl'.format(prefix, self.week_num)
+
+        # Initialize a Google Cloud Storage client
+        storage_client = storage.Client(project=project_id)
+        bucket = storage_client.get_bucket(bucket_name)
         try:
-            with open(file_path, 'wb') as f:
-                pickle.dump(self, f)
-        except FileExistsError:
-            return False  # File already exists, serialization failed
+            blob = storage.Blob(object_name, bucket)
+            blob.delete()
         except Exception as e:
-            print("An error occurred while serializing:", str(e))
-            return False  # Serialization failed due to an error
+            print(f"No existing object found. Creating new blob.")
+        try:
+            # Pickle the Python object to a byte stream
+            byte_stream = io.BytesIO()
+            pickle.dump(self, byte_stream)
+            byte_stream.seek(0)  # Reset stream position to the beginning
+            blob = bucket.blob(object_name)
+            blob.upload_from_file(byte_stream)
+            print("File uploaded successfully.")
+        except Exception as e:
+            print(f"Something went wrong while serializing state #{self.week_num}. Error: {str(e)}")
         finally:
             self.prev_state = place_holder
         return True  # Serialization successful

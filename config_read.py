@@ -17,7 +17,8 @@ def read_config(config):
         {
             "demand_link" (str): link to spreadsheet with OH demand.
             "availabilities_link" (str): link to spreadsheet with OH availabilities.
-            "path_to_bucket" (str): path to cloud storage where intermediate algo outputs are stored
+            "project_id" (str): project id containing the cloud storage bucket
+            "bucket_name" (str): bucket name of the cloud storage bucket
             "class" (str): class this output is for (e.g. cs61a)
             "semester" (str): current semester (e.g. sp23)
             "weeks" (int): number of weeks in a semester

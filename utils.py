@@ -12,6 +12,9 @@ import pickle
 from bidict import bidict
 from datetime import datetime, timedelta
 import State
+import io
+from google.cloud import storage
+import config_read
 
 # Set to readonly
 SCOPE = ['https://www.googleapis.com/auth/spreadsheets.readonly',
@@ -267,7 +270,7 @@ def doubly_mapped_dictionary(input_dict):
 
     return output_dict
 
-def deserialize(folder, week_num, weeks_skipped):
+def deserialize(project_id, bucket_name, week_num, weeks_skipped, prefix=None):
     """
     Deserializes objects from the specified folder for the given week. 
     Also deserializes objects form previous weeks so that prev_state is populated.
@@ -281,42 +284,58 @@ def deserialize(folder, week_num, weeks_skipped):
     """
     # Check each file and only deserialize all states below or equal to week_num
     deserialized_objects = [None] * (week_num - weeks_skipped)
-    for filename in os.listdir(folder):
-        if filename.endswith('.pkl'):
-            file_path = os.path.join(folder, filename)
-            current_week_num = int(filename.split('.')[0])
-            if current_week_num <= week_num:
-                with open(file_path, 'rb') as f:
-                    obj = pickle.load(f)
-                    deserialized_objects[current_week_num - weeks_skipped - 1] = obj
+
+    client = storage.Client(project=project_id)
+    bucket = client.bucket(bucket_name)
+
+    target_filename = '{}/{}.pkl'.format(prefix, week_num)
+    blobs = bucket.list_blobs(prefix=prefix)  # List all blobs with the given prefix
+
+    for blob in blobs:
+        if blob.name.endswith('.pkl'):
+            no_prefix_blob_name = os.path.basename(blob.name)
+            current_week_num = int(no_prefix_blob_name.split('.')[0])
+            pickled_data = blob.download_as_bytes()
+            data = pickle.loads(pickled_data)
+            deserialized_objects[current_week_num - weeks_skipped - 1] = data
     
     # Link states
     for i in range(len(deserialized_objects) - 1):
         deserialized_objects[i+1].prev_state = deserialized_objects[i]
     
-    print(deserialized_objects)
-    
     # Return the state object for the current week
     return deserialized_objects[-1]
 
-def get_latest_week(folder_path):
-    """Returns the largest week number from the filenames in the specified folder.
+def get_latest_week(project_id, bucket_name, prefix=None):
+    """Returns the largest week number from the filenames in the google bucket.
 
     Args:
-        folder_path (str): Path to the folder containing the pickle objects.
+        project_id (str): id of the google project
+        bucket_name (str): name of the bucket
+        prefix (str, optional): prefix of the files in the bucket. Defaults to None.
 
     Returns:
         int: The largest week number found.
     """
-    largest_week_num = -1
-    for filename in os.listdir(folder_path):
-        if filename.endswith('.pkl'):
-            try:
-                week_num = int(filename.split('.')[0])
-                largest_week_num = max(largest_week_num, week_num)
-            except ValueError:
-                pass  # Ignore files with non-numeric week numbers
-    return largest_week_num
+    client = storage.Client(project=project_id)
+    bucket = client.bucket(bucket_name)
+    blobs = bucket.list_blobs(prefix=prefix)
+    
+    max_number = -1
+    pattern = r'^(\d+)\.pkl$'  # Matches {number}.pkl
+
+    for blob in blobs:
+        filename = os.path.basename(blob.name)
+        match = re.match(pattern, filename)
+        if match:
+            number = int(match.group(1))  # The number is the first group in the match
+            max_number = max(max_number, number)
+    
+    if max_number == -1:
+        print(f"No files found with the format '{{number}}.pkl' in {bucket_name}/{prefix}")
+        return -1
+
+    return max_number
 
 def get_google_sheets_id(link):
     """Gets the google sheets id from a google sheets link
@@ -378,13 +397,54 @@ def nearest_future_monday(date_string):
         return date_obj
     return date_obj + timedelta(days=(7 - day_of_week))
 
-def main():
-    import config_read
-    config = config_read.read_config("config.json")
 
-    demand_id = get_google_sheets_id(config["demand_link"])
-    demand = get_demand(demand_id, config_read.DEMAND_RANGE, 15)
-    print(demand.take([list(range(10,15))], axis=0))
+def list_blobs_with_prefix(bucket_name, prefix, delimiter=None):
+    """Lists all the blobs in the bucket that begin with the prefix.
+
+    This can be used to list all blobs in a "folder", e.g. "public/".
+
+    The delimiter argument can be used to restrict the results to only the
+    "files" in the given "folder". Without the delimiter, the entire tree under
+    the prefix is returned. For example, given these blobs:
+
+        a/1.txt
+        a/b/2.txt
+
+    If you specify prefix ='a/', without a delimiter, you'll get back:
+
+        a/1.txt
+        a/b/2.txt
+
+    However, if you specify prefix='a/' and delimiter='/', you'll get back
+    only the file directly under 'a/':
+
+        a/1.txt
+
+    As part of the response, you'll also get back a blobs.prefixes entity
+    that lists the "subfolders" under `a/`:
+
+        a/b/
+    """
+
+    storage_client = storage.Client()
+
+    # Note: Client.list_blobs requires at least package version 1.17.0.
+    blobs = storage_client.list_blobs(bucket_name, prefix=prefix, delimiter=delimiter)
+
+    # Note: The call returns a response only when the iterator is consumed.
+    print("Blobs:")
+    for blob in blobs:
+        print(blob.name)
 
 if __name__ == '__main__':
-    main()
+    config = config_read.read_config("config.json")
+    prefix = f"{config['class']}-{config['semester']}"
+    
+    # get last state
+    latest_week = get_latest_week(config["project_id"], config["bucket_name"], prefix)
+    if latest_week > -1:
+        last_state = deserialize(config.get("project_id"), config["bucket_name"], latest_week, config["weeks_skipped"], prefix)
+    else:
+        last_state = None
+    
+    last_state.print_algo_outputs()

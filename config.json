@@ -1,14 +1,15 @@
 {
     "demand_link": "https://docs.google.com/spreadsheets/d/1GUbXCEBczIe1WBeYVP6p0YWP58YuToJuzIJf-xtUCC8/edit#gid=0",
-    "availabilities_link": "https://docs.google.com/spreadsheets/d/1EM5k2Vg_Ua6XelEXoox7ExNnBR2nL3pO1Uytl0Fbfas/edit?resourcekey#gid=1765561727",
-    "path_to_bucket": "states",
-    "class": "CS61A",
-    "semester": "SP23",
+    "availabilities_link": "https://docs.google.com/spreadsheets/d/1823eO5XTFRPjvisZB-vZWanu0aFE3Y3Fpoyds_34uy8/edit#gid=1765561727",
+    "project_id": "PLACEHOLDER",
+    "bucket_name": "PLACEHOLDER",
+    "class": "61a",
+    "semester": "sp23",
     "weeks": 15, 
     "weekly_hour_multiplier": 2,
     "start_date": "2021-01-19",
     "weeks_skipped": 2,
-    "calendar_event_name": "CS61A OH",
+    "calendar_event_name": "CS61A OH TEST 2",
     "calendar_event_location": "Warren",
-    "calendar_event_description": "test"
+    "calendar_event_description": "test2"
 }

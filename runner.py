@@ -8,6 +8,8 @@ import numpy as np
 import shutil
 from datetime import timedelta
 import re
+from google.cloud import storage
+from google.api_core.exceptions import Forbidden, NotFound
 
 # The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
 AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
@@ -22,21 +24,34 @@ def validate_config(config):
     for key in config:
         if not config[key]:
             raise ValueError(f"Config field {key} is empty")
+        
+    # check if google project exists and if we have permission
+    client = storage.Client(project=config["project_id"])
     
-    if not (os.path.exists(config["path_to_bucket"]) and os.path.isdir(config["path_to_bucket"])):
-        raise ValueError("Path to bucket does not exist or is not a directory")
+    # check if bucket exists and we have permission
+    try:
+        bucket = client.bucket(config["bucket_name"])
+        if not bucket.exists():
+            print(f"Bucket {config['bucket_name']} does not exist in the project: {config['project_id']}")
+            return False
+        return True
+    except Forbidden:
+        print(f"No access to the bucket {config['bucket_name']} in the project: {config['project_id']}")
+        return False
     
     if config["weekly_hour_multiplier"] < 1:
         raise ValueError("Weekly hour multiplier must be at least 1")
     pattern = r'^\d{4}-\d{2}-\d{2}$'
     if not re.match(pattern, config["start_date"]):
-        raise ValueError("String is not in the 'YYYY-MM-DD' format.")
+        raise ValueError("start_date is not in the 'YYYY-MM-DD' format.")
     
     if config["weeks_skipped"] < 0:
         raise ValueError("Weeks skipped must be at least 0")
     
     if config["weeks_skipped"] >= config["weeks"]:
         raise ValueError("Weeks skipped must be less than the total number of weeks")
+    
+
 
 def validate_availabilities(sheet):
     # check each row
@@ -70,6 +85,7 @@ def validate_availabilities(sheet):
 def main():
     config = config_read.read_config("config.json")
     validate_config(config)
+    prefix = f"{config['class']}-{config['semester']}"
     
     # get spreadsheets
     availabilities_id = config_read.get_google_sheets_id(config["availabilities_link"])
@@ -81,9 +97,9 @@ def main():
     # already validates OH demand in get_demand. Could add more validation here if needed
 
     # get last state
-    latest_week = utils.get_latest_week(config.get("path_to_bucket"))
+    latest_week = utils.get_latest_week(config["project_id"], config["bucket_name"], prefix)
     if latest_week > -1:
-        last_state = utils.deserialize(config.get("path_to_bucket"), latest_week, config["weeks_skipped"])
+        last_state = utils.deserialize(config.get("project_id"), config["bucket_name"], latest_week, config["weeks_skipped"], prefix)
     else:
         last_state = None
 
@@ -117,7 +133,7 @@ def main():
                               config["calendar_event_location"], 
                               config["calendar_event_description"])
     
-    state.serialize(config.get("path_to_bucket"))
+    state.serialize(config["project_id"], config["bucket_name"], prefix)
 
 
 
@@ -135,25 +151,6 @@ def run_algorithm(inputs):
     if len(ans) > 1:
         ans = np.stack(ans)
     return ans
-
-def test_email():
-    config = config_read.read_config("config.json")
-    
-    latest_week = utils.get_latest_week(config.get("path_to_bucket"))
-    state = utils.deserialize(config.get("path_to_bucket"), latest_week, config["weeks_skipped"])
-    mappings = state.bi_mappings
-    first_monday = utils.nearest_future_monday(config["start_date"])
-    starting_monday = first_monday + timedelta((state.week_num - config["weeks_skipped"] - 1)* 7)
-    assignments = np.random.randint(2, size=(len(state.course_staff_dict), 5, 12))
-    for i in range(assignments.shape[0]):
-        email = mappings.inverse[i]
-        send_email.send_invites(email, 
-                              assignments[i], 
-                              starting_monday, 
-                              config["calendar_event_name"], 
-                              config["calendar_event_location"], 
-                              config["calendar_event_description"])
-    state.serialize(config.get("path_to_bucket"))
 
 if __name__ == '__main__':
     main()
