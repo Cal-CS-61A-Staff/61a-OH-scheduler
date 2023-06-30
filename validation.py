@@ -25,6 +25,9 @@ def validate_config(config):
 
     Args:
         config (dictionary): output of config_read
+
+    Returns:
+        None
     """
     
     # Check each key has a corresponding value
@@ -60,9 +63,19 @@ def validate_config(config):
 
     
 def validate_availabilities(sheet):
-    # check each row
+    """Validates that the availabilities sheet has all the required fields and that the values are valid
+
+    Args:
+        sheet (list): output of config_read
+
+    Returns:
+        None
+    """
+
     for row in sheet:
         email = row[State.course_staff.email_address_index]
+
+        # Check if email is valid
         pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         if (re.match(pattern, email) is None):
             raise ValueError(f"Invalid email: {email}")
@@ -72,18 +85,19 @@ def validate_availabilities(sheet):
         preferred_contiguous_hours = row[State.course_staff.preferred_contiguous_hours_index]
 
         if target_weekly_hours > total_hours:
-            raise ValueError(f"Target hours ({target_weekly_hours}) cannot be greater than total hours ({total_hours}) for email {email}")
+            raise ValueError(f"Target hours ({target_weekly_hours}) cannot be greater than total hours ({total_hours}) for {email}")
         
         if preferred_contiguous_hours > target_weekly_hours:
-            raise ValueError(f"Preferred hours ({preferred_contiguous_hours}) cannot be greater than target hours ({target_hours}) for email {email}")
+            raise ValueError(f"Preferred hours ({preferred_contiguous_hours}) cannot be greater than target hours ({target_weekly_hours}) for {email}")
         
-        not_availables = 0
+        # Check total availabilities
+        num_not_available = 0
         for i in State.course_staff.availabilities_indices:
             if row[i] < 1 or row[i] > 5:
                 raise ValueError(f"Invalid availability for email {email}. Must start with a number between 1 and 5")
             if row[i] == 5:
-                not_availables += 1
+                num_not_available += 1
 
-        if (5 * 12 - not_availables) < target_weekly_hours:
-            print(f"Warning: email {email} has less than {target_weekly_hours} available hours")
+        if (5 * 12 - num_not_available) < target_weekly_hours:
+            raise ValueError(f"Email {email} has less than {target_weekly_hours} available hours")
     

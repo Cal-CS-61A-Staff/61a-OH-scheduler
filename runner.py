@@ -20,20 +20,21 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
 
 def main():
+    # Config Read
     config = config_read.read_config("config.json")
     validation.validate_config(config)
-    prefix = f"{config['class']}-{config['semester']}"
     
-    # get spreadsheets
+    # Get availabilities data
     availabilities_id = config_read.get_google_sheets_id(config["availabilities_link"])
     availabilities = utils.get_availabilities(availabilities_id, AVAILABILITIES_RANGE)
     validation.validate_availabilities(availabilities)
 
+    # Get OH demand data
     demand_id = config_read.get_google_sheets_id(config["demand_link"])
     demand = utils.get_demand(demand_id, DEMAND_RANGE, config["weeks"])
-    # already validates OH demand in get_demand. Could add more validation here if needed
 
-    # get last state
+    # Get last state
+    prefix = f"{config['class']}-{config['semester']}"
     latest_week = utils.get_latest_week(config["project_id"], config["bucket_name"], prefix)
     if latest_week > -1:
         last_state = utils.deserialize(config.get("project_id"), config["bucket_name"], latest_week, config["weeks_skipped"], prefix)

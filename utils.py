@@ -17,11 +17,10 @@ import io
 from google.cloud import storage
 import config_read
 
-# Set to readonly
+# Service Account Scopes
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly',
          'https://www.googleapis.com/auth/calendar']
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 def get_sheet_values(spread_sheet_id, range):
     """ Creates credentials and reads from a google sheet.
