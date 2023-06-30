@@ -1,10 +1,7 @@
 from __future__ import print_function
 import os.path
 import re
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from google.oauth2 import service_account
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import collections
@@ -23,7 +20,7 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly',
 
 
 def get_sheet_values(spread_sheet_id, range):
-    """ Creates credentials and reads from a google sheet.
+    """ Reads items from a google sheet.
 
     Args:
         spread_sheet_id (string): ID of the google sheet to read from.
@@ -61,10 +58,10 @@ def get_demand(sheet_id, range, total_weeks):
         Exception: No OH demand was found for this link/range
 
     Returns:
-        np_array: a (total_weeks, days, times) np array of the demand for OH
+        np_array: OH demand. Shape: (total_weeks, days, times)
     """
     values = get_sheet_values(sheet_id, range)
-    if not values:
+    if values == [[]]:
         raise Exception('No OH demand information found.')
     
     output = np.full((total_weeks, 5, 12), -1)
@@ -72,12 +69,11 @@ def get_demand(sheet_id, range, total_weeks):
     hours_mapping = {"9:00 AM": 0, "10:00 AM": 1, "11:00 AM": 2, "12:00 PM": 3, "1:00 PM": 4, "2:00 PM": 5, "3:00 PM": 6, "4:00 PM": 7, "5:00 PM": 8, "6:00 PM": 9, "7:00 PM": 10, "8:00 PM": 11}
     next_hour_validation = {"9:00 AM": "10:00 AM", "10:00 AM": "11:00 AM", "11:00 AM": "12:00 PM", "12:00 PM": "1:00 PM", "1:00 PM": "2:00 PM", "2:00 PM": "3:00 PM", "3:00 PM": "4:00 PM", "4:00 PM": "5:00 PM", "5:00 PM": "6:00 PM", "6:00 PM": "7:00 PM", "7:00 PM": "8:00 PM", "8:00 PM": "9:00 PM"}
 
-
     for row in values:
         if row[0]: # Ensure merged cells (empty cells after merged value) use the correct week
             weeks_str = row[0]
             valid_week = re.compile(r"([0-9]+)||([0-9]+, )+")
-            # TODO: Add validation for unique weeks, no duplicate weeks
+
             if not valid_week.match(weeks_str):
                 raise ValueError(f"Error: {weeks_str} is not in the correct format (e.g. 2, 3, 4).")
             week_indices = [int(week) for week in weeks_str.split(", ")]
@@ -98,6 +94,7 @@ def get_demand(sheet_id, range, total_weeks):
         starting_hour = row[2]
         ending_hour = row[3]
         valid_hour = re.compile(r"([0-9]+:00 [AP]M)")
+
         if not (valid_hour.match(starting_hour) and valid_hour.match(ending_hour)):
             raise ValueError(f"Error: time inputs for row {row} are wrong. Must be a string for an hour between 9:00 AM and 9:00 PM.")
         
@@ -117,19 +114,19 @@ def get_demand(sheet_id, range, total_weeks):
         
         for week_index in week_indices:
             if week_index < 1 or week_index > total_weeks:
-                raise ValueError(f"Error: {week_index} is not a valid week. Must be between 1 and total_weeks ({total_weeks}) (inclusive).")
+                raise ValueError(f"Error: Week {week_index} is not a valid week. Must be between 1 and total_weeks ({total_weeks}) (inclusive).")
             if output[week_index - 1][day_index][hour_index] != -1:
-                raise ValueError(f"Error: {week_index} {day} {starting_hour} is already filled. Is there a duplicate week/day/hour?")
+                raise ValueError(f"Error: Week {week_index}, {day} {starting_hour} is already filled. Is there a duplicate week/day/hour?")
             output[week_index - 1][day_index][hour_index] = int(num_staff)
 
     if np.any(output == -1):
-        raise ValueError("Invalid array. Some values were not filled. Ensure that there is an entry in the oh demand spreadsheet has for every week from 1 to total weeks, for each day, and for all hours 9:00 AM to 9:00 PM, and that there are no duplicate weeks/days/hours.")
+        raise ValueError("Invalid array. Some values were not filled. Ensure that there is an entry in the oh demand spreadsheet has for every week from 1 to total weeks, " + \
+                         "for each day, and for all hours 9:00 AM to 9:00 PM, and that there are no duplicate weeks/days/hours.")
     return output
 
 def get_availabilities(sheet_id, range):
     """
     Gets a list of lists representing each course staff in the availabilities spreadsheet.
-
 
     Args:
         sheet_id (string): ID of the google sheet to read from. 
@@ -155,9 +152,6 @@ def get_availabilities(sheet_id, range):
             preference = extract_preference(row[i])
             row[i] = preference
     return rows
-
-
-
 
 def create_5x12_np_array(input_list):
     """
