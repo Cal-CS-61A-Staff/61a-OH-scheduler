@@ -64,24 +64,24 @@ def validate_availabilities(sheet):
             raise ValueError(f"Invalid email: {email}")
         
         total_hours = row[State.course_staff.total_weekly_hours_index]
-        target_hours = row[State.course_staff.weekly_oh_hours_index]
-        preferred_hours = row[State.course_staff.preferred_contiguous_hours_index]
+        target_weekly_hours = row[State.course_staff.weekly_oh_hours_index]
+        preferred_contiguous_hours = row[State.course_staff.preferred_contiguous_hours_index]
 
-        if target_hours > total_hours:
-            raise ValueError(f"Target hours ({target_hours}) cannot be greater than total hours ({total_hours}) for email {email}")
+        if target_weekly_hours > total_hours:
+            raise ValueError(f"Target hours ({target_weekly_hours}) cannot be greater than total hours ({total_hours}) for email {email}")
         
-        if preferred_hours > target_hours:
-            raise ValueError(f"Preferred hours ({preferred_hours}) cannot be greater than target hours ({target_hours}) for email {email}")
+        if preferred_contiguous_hours > target_weekly_hours:
+            raise ValueError(f"Preferred hours ({preferred_contiguous_hours}) cannot be greater than target hours ({target_hours}) for email {email}")
         
         not_availables = 0
         for i in State.course_staff.availabilities_indices:
             if row[i] < 1 or row[i] > 5:
                 raise ValueError(f"Invalid availability for email {email}. Must start with a number between 1 and 5")
-            if row[i] == 0:
+            if row[i] == 5:
                 not_availables += 1
-        
-        if 5 * 12 - not_availables < target_hours:
-            print(f"Warning: email {email} has less than {target_hours} available hours")
+
+        if (5 * 12 - not_availables) < target_weekly_hours:
+            print(f"Warning: email {email} has less than {target_weekly_hours} available hours")
     
 
 def main():
@@ -138,7 +138,7 @@ def main():
     #                           config["calendar_event_location"], 
     #                           config["calendar_event_description"])
     
-    state.serialize(config["project_id"], config["bucket_name"], prefix)
+    # state.serialize(config["project_id"], config["bucket_name"], prefix)
 
 
 

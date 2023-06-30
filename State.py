@@ -13,11 +13,11 @@ class course_staff():
     Represents a course staff member
     """
 
-    # Indices of the data in the availabilities spreadsheet. If the form is changed,
+    # Indices of the data in the availabilities spreadsheet. WARNING: If the form is changed,
     # these indices must be updated.
     email_address_index = 0
     appointed_position_index = 1
-    total_weekly_hours_index = 2
+    total_weekly_hours_index = 2 # the number of hours per week a staff member's total appointment is
     semesters_on_staff_index = 3
     semesters_as_ai_index = 4
     weekly_oh_hours_index = 5
