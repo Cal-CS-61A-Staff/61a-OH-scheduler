@@ -3,6 +3,7 @@ import os.path
 import re
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -17,8 +18,10 @@ from google.cloud import storage
 import config_read
 
 # Set to readonly
-SCOPE = ['https://www.googleapis.com/auth/spreadsheets.readonly',
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly',
          'https://www.googleapis.com/auth/calendar']
+
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 def get_sheet_values(spread_sheet_id, range):
     """ Creates credentials and reads from a google sheet.
@@ -30,41 +33,20 @@ def get_sheet_values(spread_sheet_id, range):
     Returns:
        list: Returns a list of lists, where each list is a row in the sheet. The first row is the header row.
     """
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPE)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPE)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
 
-    try:
-        service = build('sheets', 'v4', credentials=creds)
+    # Creating credentials
+    creds = service_account.Credentials.from_service_account_file(
+        "credentials.json", scopes=SCOPES
+    )
 
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=spread_sheet_id,
-                                    range=range).execute()
+    service = build('sheets', 'v4', credentials = creds)
 
-        # Get values from sheet
-        values = result.get('values', [])
-        if not values:
-            print('No data found.')
-            return None
-        return values
-    except HttpError as err:
-        print(err)
-        return None
+    # Calling the Sheets API for values (if this errors, that's fine, the Cloud Function will just crash)
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=spread_sheet_id, range=range).execute()
+    values = result.get('values', [])
+
+    return values
 
 def get_demand(sheet_id, range, total_weeks):
     """
