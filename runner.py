@@ -15,6 +15,8 @@ from google.api_core.exceptions import Forbidden, NotFound
 AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
 DEMAND_RANGE = 'Demand!A2:E'
 
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+
 def validate_config(config):
     """Validates that config.json has all the required fields and that the values are valid
 
@@ -103,6 +105,9 @@ def main():
     else:
         last_state = None
 
+    if latest_week == config['weeks']:
+        raise RuntimeError("Allotted # of weeks have already passed. Exiting.")
+
     # create new state
     state = State.state(last_state, 
                         demand, 
@@ -114,24 +119,24 @@ def main():
                         config["weeks_skipped"])
     
     # run algorithm
-    inputs = state.get_algo_inputs()
-    assignments = run_algorithm(inputs)
-    state.set_assignments(assignments)
+    # inputs = state.get_algo_inputs()
+    # assignments = run_algorithm(inputs)
+    # state.set_assignments(assignments)
 
     # validate algorithm outputs
     
     # send emails
-    mappings = state.bi_mappings
-    first_monday = utils.nearest_future_monday(config["start_date"])
-    starting_monday = first_monday + timedelta((state.week_num - config["weeks_skipped"] - 1)* 7)
-    for i in range(assignments.shape[0]):
-        email = mappings.inverse[i]
-        send_email.send_invites(email, 
-                              assignments[i], 
-                              starting_monday, 
-                              config["calendar_event_name"], 
-                              config["calendar_event_location"], 
-                              config["calendar_event_description"])
+    # mappings = state.bi_mappings
+    # first_monday = utils.nearest_future_monday(config["start_date"])
+    # starting_monday = first_monday + timedelta((state.week_num - config["weeks_skipped"] - 1)* 7)
+    # for i in range(assignments.shape[0]):
+    #     email = mappings.inverse[i]
+    #     send_email.send_invites(email, 
+    #                           assignments[i], 
+    #                           starting_monday, 
+    #                           config["calendar_event_name"], 
+    #                           config["calendar_event_location"], 
+    #                           config["calendar_event_description"])
     
     state.serialize(config["project_id"], config["bucket_name"], prefix)
 
