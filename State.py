@@ -8,7 +8,7 @@ from bidict import bidict
 from google.cloud import storage
 import io
 
-class course_staff():
+class course_staff:
     """
     Represents a course staff member
     """

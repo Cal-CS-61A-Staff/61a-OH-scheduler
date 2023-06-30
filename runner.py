@@ -23,7 +23,7 @@ def main():
     # Config Read
     config = config_read.read_config("config.json")
     validation.validate_config(config)
-    
+
     # Get availabilities data
     availabilities_id = config_read.get_google_sheets_id(config["availabilities_link"])
     availabilities = utils.get_availabilities(availabilities_id, AVAILABILITIES_RANGE)
@@ -58,7 +58,7 @@ def main():
     # inputs = state.get_algo_inputs()
     # assignments = run_algorithm(inputs)
     # state.set_assignments(assignments)
-
+ 
     # validate algorithm outputs
     
     # send emails
