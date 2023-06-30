@@ -74,7 +74,7 @@ def main():
     #                           config["calendar_event_location"], 
     #                           config["calendar_event_description"])
     
-    # state.serialize(config["project_id"], config["bucket_name"], prefix)
+    state.serialize(config["project_id"], config["bucket_name"], prefix)
 
 
 

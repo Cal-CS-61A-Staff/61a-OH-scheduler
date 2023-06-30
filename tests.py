@@ -57,7 +57,7 @@ def basic_test():
     states = []
     for sheet in sheets:
         state = create_new_state(sheet)
-        state.set_assignments(generate_dummy_assignments(len(state.course_staff_dict)))
+        state.set_assignments(generate_dummy_assignments(len(state.StaffMember_dict)))
         state.serialize(config.get("path_to_bucket"))
         states.append(state)
     print("######### FIRST STATE #########")

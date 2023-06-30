@@ -142,13 +142,13 @@ def get_availabilities(sheet_id, range):
     
     rows = values[1:]
     for row in rows:
-        row[State.course_staff.total_weekly_hours_index] = int(row[State.course_staff.total_weekly_hours_index])
-        row[State.course_staff.semesters_on_staff_index] = int(row[State.course_staff.semesters_on_staff_index])
-        row[State.course_staff.semesters_as_ai_index] = int(row[State.course_staff.semesters_as_ai_index])
-        row[State.course_staff.weekly_oh_hours_index] = int(row[State.course_staff.weekly_oh_hours_index])
-        row[State.course_staff.preferred_contiguous_hours_index] = int(row[State.course_staff.preferred_contiguous_hours_index])
+        row[State.StaffMember.total_weekly_hours_index] = int(row[State.StaffMember.total_weekly_hours_index])
+        row[State.StaffMember.semesters_on_staff_index] = int(row[State.StaffMember.semesters_on_staff_index])
+        row[State.StaffMember.semesters_as_ai_index] = int(row[State.StaffMember.semesters_as_ai_index])
+        row[State.StaffMember.weekly_oh_hours_index] = int(row[State.StaffMember.weekly_oh_hours_index])
+        row[State.StaffMember.preferred_contiguous_hours_index] = int(row[State.StaffMember.preferred_contiguous_hours_index])
 
-        for i in State.course_staff.availabilities_indices:
+        for i in State.StaffMember.availabilities_indices:
             preference = extract_preference(row[i])
             row[i] = preference
     return rows
