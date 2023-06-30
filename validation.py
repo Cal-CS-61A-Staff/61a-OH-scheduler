@@ -3,6 +3,23 @@ import re
 from google.cloud import storage
 from google.api_core.exceptions import Forbidden, NotFound
 
+CONFIG_KEYS = [
+    "demand_link",
+    "availabilities_link",
+    "project_id",
+    "bucket_name",
+    "class",
+    "semester",
+    "weeks",
+    "weekly_hour_multiplier",
+    "start_date",
+    "weeks_skipped",
+    "calendar_event_name",
+    "calendar_event_location",
+    "calendar_event_description"
+]
+
+
 def validate_config(config):
     """Validates that config.json has all the required fields and that the values are valid
 
@@ -37,6 +54,10 @@ def validate_config(config):
     
     if config["weeks_skipped"] >= config["weeks"]:
         raise ValueError("Weeks skipped must be less than the total number of weeks")
+    
+    # Make sure all keys are in dictionary
+    assert set(CONFIG_KEYS) - set(config.keys()) == set(), f"config.json is missing the following keys: {set(CONFIG_KEYS) - set(config.keys())}"
+
     
 def validate_availabilities(sheet):
     # check each row

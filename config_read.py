@@ -2,22 +2,6 @@ import json
 import utils
 import State
 
-CONFIG_KEYS = [
-    "demand_link",
-    "availabilities_link",
-    "project_id",
-    "bucket_name",
-    "class",
-    "semester",
-    "weeks",
-    "weekly_hour_multiplier",
-    "start_date",
-    "weeks_skipped",
-    "calendar_event_name",
-    "calendar_event_location",
-    "calendar_event_description"
-]
-
 def read_config(config):
     """Reads the configuration file and creates a dictionary
 
@@ -53,9 +37,6 @@ def read_config(config):
     data["weeks"] = int(data["weeks"])
     data["weekly_hour_multiplier"] = int(data["weekly_hour_multiplier"])
     data["weeks_skipped"] = int(data["weeks_skipped"])
-
-    # Make sure all keys are in dictionary
-    assert set(CONFIG_KEYS) - set(data.keys()) == set(), f"config.json is missing the following keys: {set(CONFIG_KEYS) - set(data.keys())}"
 
     return data
 
