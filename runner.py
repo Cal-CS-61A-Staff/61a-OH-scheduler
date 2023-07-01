@@ -11,6 +11,7 @@ import re
 from google.cloud import storage
 from google.api_core.exceptions import Forbidden, NotFound
 import validation
+import algorithm
 
 # The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
 AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
@@ -44,7 +45,7 @@ def main():
     if latest_week == config['weeks']:
         raise RuntimeError("Allotted # of weeks have already passed. Exiting.")
 
-    # create new state
+    # Create new state object
     state = State.state(last_state, 
                         demand, 
                         availabilities, 
@@ -54,14 +55,14 @@ def main():
                         config["weekly_hour_multiplier"], 
                         config["weeks_skipped"])
     
-    # run algorithm
-    # inputs = state.get_algo_inputs()
-    # assignments = run_algorithm(inputs)
-    # state.set_assignments(assignments)
+    # Run algorithm
+    inputs = state.get_algo_inputs()
+    assignments = run_algorithm(inputs)
+    state.set_assignments(assignments)
  
-    # validate algorithm outputs
+    # Validate algorithm output TODO
     
-    # send emails
+    # Email send
     # mappings = state.bi_mappings
     # first_monday = utils.nearest_future_monday(config["start_date"])
     # starting_monday = first_monday + timedelta((state.week_num - config["weeks_skipped"] - 1)* 7)
