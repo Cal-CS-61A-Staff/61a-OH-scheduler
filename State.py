@@ -15,14 +15,14 @@ class StaffMember:
 
     # Indices of the data in the availabilities spreadsheet. WARNING: If the form is changed,
     # these indices must be updated.
-    email_address_index = 0
-    appointed_position_index = 1
-    total_weekly_hours_index = 2 # the number of hours per week a staff member's total appointment is
-    semesters_on_staff_index = 3
-    semesters_as_ai_index = 4
-    weekly_oh_hours_index = 5
-    preferred_contiguous_hours_index = 6
-    availabilities_indices = range(7, 67) # 5 * 12 slots
+    EMAIL_ADDRESS_INDEX = 0
+    APPOINTED_POSITION_INDEX = 1
+    TOTAL_WEEKLY_HOURS_INDEX = 2 # the number of hours per week a staff member's total appointment is
+    SEMESTERS_ON_STAFF_INDEX = 3
+    SEMESTER_AS_AI_INDEX = 4
+    WEEKLY_OH_HOURS_INDEX = 5
+    PREFERRED_CONTIGUOUS_HOURS_INDEX = 6
+    AVAILABILITIES_INDICES = range(7, 67) # 5 * 12 slots
 
     def __init__(self, data_row, weeks_left):
         """Initializes a new StaffMember object.
@@ -37,12 +37,11 @@ class StaffMember:
             hours_left (int): The number of office hours left to assign to this course
             staff member this semester.
 
-            The following aren't used, and are here for future reference:
+            NOTE: The following aren't used, and are here for future reference:
             appointed_position (string): The appointed position of the course staff member.
             total_weekly_hours (int): The total number of hours the course staff member is expected to work per week.
             semesters_on_staff (int): The number of semesters the course staff member has been on staff.
             semesters_as_ai (int): The number of semesters the course staff member has been an AI.
-
     
         Args:
             data_row (list): A row from the availabilities spreadsheet. The
@@ -51,12 +50,12 @@ class StaffMember:
             preferred hours, appointed hours, etc. are specified as class variables.
             weeks_left (int): The number of weeks left in the semester, INCLUDING the week this state is made for.
         """
-        self.email = data_row[StaffMember.email_address_index]
-        self.weekly_oh_hours = int(data_row[StaffMember.weekly_oh_hours_index])
-        self.preferred_contiguous_hours = int(data_row[StaffMember.preferred_contiguous_hours_index])
+        self.email = data_row[StaffMember.EMAIL_ADDRESS_INDEX]
+        self.weekly_oh_hours = int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX])
+        self.preferred_contiguous_hours = int(data_row[StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX])
 
         # Extract number from availabilities list and reshape
-        availabilities_list = [data_row[i] for i in StaffMember.availabilities_indices]
+        availabilities_list = [data_row[i] for i in StaffMember.AVAILABILITIES_INDICES]
         self.availabilities = utils.create_5x12_np_array(availabilities_list)
 
         self.hours_left = weeks_left * self.weekly_oh_hours
@@ -65,10 +64,10 @@ class StaffMember:
         self.assigned_hours = None
 
         # The following aren't used, and are here for future reference
-        self.appointed_position = data_row[StaffMember.appointed_position_index]
-        self.total_weekly_hours = int(data_row[StaffMember.total_weekly_hours_index])
-        self.semesters_on_staff = int(data_row[StaffMember.semesters_on_staff_index])
-        self.semesters_as_ai = int(data_row[StaffMember.semesters_as_ai_index])
+        self.appointed_position = data_row[StaffMember.APPOINTED_POSITION_INDEX]
+        self.total_weekly_hours = int(data_row[StaffMember.TOTAL_WEEKLY_HOURS_INDEX])
+        self.semesters_on_staff = int(data_row[StaffMember.SEMESTERS_ON_STAFF_INDEX])
+        self.semesters_as_ai = int(data_row[StaffMember.SEMESTER_AS_AI_INDEX])
 
     def update(self, data_row, weeks_left):
         """Updates the information for a course staff.
@@ -77,25 +76,25 @@ class StaffMember:
             new_row (list): A row from the availabilities spreadsheet.
             weeks_left (int): The number of weeks left in the semester, INCLUDING the week this state is made for.
         """
-        if data_row[StaffMember.email_address_index] != self.email:
+        if data_row[StaffMember.EMAIL_ADDRESS_INDEX] != self.email:
             raise Exception("Email addresses do not match")
         
         # Replace old data with no special instructions
-        self.appointed_position = data_row[StaffMember.appointed_position_index]
-        self.total_weekly_hours = int(data_row[StaffMember.total_weekly_hours_index])
-        self.semesters_on_staff = int(data_row[StaffMember.semesters_on_staff_index])
-        self.semesters_as_ai = int(data_row[StaffMember.semesters_as_ai_index])
-        self.preferred_contiguous_hours = int(data_row[StaffMember.preferred_contiguous_hours_index])
+        self.appointed_position = data_row[StaffMember.APPOINTED_POSITION_INDEX]
+        self.total_weekly_hours = int(data_row[StaffMember.TOTAL_WEEKLY_HOURS_INDEX])
+        self.semesters_on_staff = int(data_row[StaffMember.SEMESTERS_ON_STAFF_INDEX])
+        self.semesters_as_ai = int(data_row[StaffMember.SEMESTER_AS_AI_INDEX])
+        self.preferred_contiguous_hours = int(data_row[StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX])
 
         # if the weekly oh hours changed, we replace the hours left with just the new value * weeks left
         # otherwise we keep it as the old hours_left count. This is to prevent situations where students
         # resubmit the form and their hours_left count gets "reset".
-        if self.weekly_oh_hours != int(data_row[StaffMember.weekly_oh_hours_index]):
-            self.weekly_oh_hours = int(data_row[StaffMember.weekly_oh_hours_index])
+        if self.weekly_oh_hours != int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX]):
+            self.weekly_oh_hours = int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX])
             self.hours_left = weeks_left * self.weekly_oh_hours
 
         # Reshape availabilities list
-        availabilities_list = [data_row[i] for i in StaffMember.availabilities_indices]
+        availabilities_list = [data_row[i] for i in StaffMember.AVAILABILITIES_INDICES]
         self.availabilities = utils.create_5x12_np_array(availabilities_list)
 
     def set_assignment(self, assignment):
@@ -144,9 +143,11 @@ class StaffMember:
         info += "Total Weekly Hours: {}\n".format(self.total_weekly_hours)
         info += "Semesters on Staff: {}\n".format(self.semesters_on_staff)
         info += "Semesters as AI: {}\n".format(self.semesters_as_ai)
+
+        return info
         
     
-class state():
+class state:
     """
     An internal state object for storing relevant information between runs. 
     There should be one state for each week that this algorithm has been run.
@@ -228,7 +229,7 @@ class state():
         latest_form_submissions = utils.filter_last_row_by_email(new_form_submissions)
         for student_list in latest_form_submissions:
             # Extract email address
-            email = student_list[StaffMember.email_address_index]
+            email = student_list[StaffMember.EMAIL_ADDRESS_INDEX]
 
             # If the email address is not in mappings, create a new student, mappings, and add to list
             if email not in self.StaffMember_dict:
@@ -374,7 +375,7 @@ class state():
         serialize each previous state as well.
 
         Returns:
-            boolean: success or fail
+            None
         """
         if self.prev_state:
             self.prev_state.serialize(project_id, bucket_name, prefix)
@@ -385,24 +386,27 @@ class state():
         # Initialize a Google Cloud Storage client
         storage_client = storage.Client(project=project_id)
         bucket = storage_client.get_bucket(bucket_name)
+
         try:
             blob = storage.Blob(object_name, bucket)
             blob.delete()
         except Exception as e:
-            print(f"No existing object found. Creating new blob.")
+            print(f"Creating new blob for {object_name}.")
+
         try:
             # Pickle the Python object to a byte stream
             byte_stream = io.BytesIO()
             pickle.dump(self, byte_stream)
-            byte_stream.seek(0)  # Reset stream position to the beginning
+            
+            # Reset stream position to the beginning and upload
+            byte_stream.seek(0)
             blob = bucket.blob(object_name)
             blob.upload_from_file(byte_stream)
-            print("File uploaded successfully.")
+            print("State object uploaded successfully.")
         except Exception as e:
             print(f"Something went wrong while serializing state #{self.week_num}. Error: {str(e)}")
         finally:
             self.prev_state = place_holder
-        return True  # Serialization successful
     
     def __str__(self):
         prev_state_str = str(self.prev_state.week_num) if self.prev_state else "None"
