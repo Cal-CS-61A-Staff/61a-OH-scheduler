@@ -189,18 +189,18 @@ class state:
             self.prev_state = None
             self.week_num = weeks_skipped + 1
             self.weeks_remaining = total_weeks - weeks_skipped
-            self.StaffMember_dict = {}
+            self.course_staff_dict = {}
             self.bi_mappings = bidict({})
             self.rows_parsed = 0
 
             self.update(availabilities, self.weeks_remaining)
-            self.day_ones = len(self.StaffMember_dict)
+            self.day_ones = len(self.course_staff_dict)
         else:
             self.prev_state = prev
             self.week_num = prev.week_num + 1 
             self.weeks_remaining = prev.weeks_remaining - 1
             self.rows_parsed = prev.rows_parsed
-            self.StaffMember_dict = copy.deepcopy(prev.StaffMember_dict)
+            self.course_staff_dict = copy.deepcopy(prev.course_staff_dict)
             self.bi_mappings = copy.deepcopy(prev.bi_mappings)
             self.day_ones = prev.day_ones
 
@@ -232,13 +232,13 @@ class state:
             email = student_list[StaffMember.EMAIL_ADDRESS_INDEX]
 
             # If the email address is not in mappings, create a new student, mappings, and add to list
-            if email not in self.StaffMember_dict:
+            if email not in self.course_staff_dict:
                 staff = StaffMember(student_list, weeks_remaining)
-                self.StaffMember_dict[email] = staff
-                self.bi_mappings[email] = len(self.StaffMember_dict) - 1
+                self.course_staff_dict[email] = staff
+                self.bi_mappings[email] = len(self.course_staff_dict) - 1
             else:
                 # Update the corresponding student.
-                self.StaffMember_dict[email].update(student_list, weeks_remaining)
+                self.course_staff_dict[email].update(student_list, weeks_remaining)
 
             self.rows_parsed += 1
     
@@ -249,16 +249,16 @@ class state:
             assignments (np.array): Np array of shape (# of staff, 5, 12) representing the assignments for this week.
             Each row's index should match up with bi_mappings for which staff member it refers to
         """
-        if assignments.shape[0] != len(self.StaffMember_dict):
-            raise ValueError("Assignments length does not match number of staff members. {} != {}".format(assignments.shape[0], len(self.StaffMember_dict)))
+        if assignments.shape[0] != len(self.course_staff_dict):
+            raise ValueError("Assignments length does not match number of staff members. {} != {}".format(assignments.shape[0], len(self.course_staff_dict)))
 
         for i in range(len(assignments)):
             assignment = assignments[i]
             staff_email = self.bi_mappings.inverse[i]
-            self.StaffMember_dict[staff_email].set_assignment(assignment)
+            self.course_staff_dict[staff_email].set_assignment(assignment)
 
     def get_day_one_assignments(self):
-        """Returns all past assignments of day one staff memberes
+        """Returns all past assignments of day one staff members
 
         Returns:
             np.array: Np array of shape (# of previous weeks, # of day one staff, 5, 12) representing the assignments for each previous week.
@@ -275,7 +275,7 @@ class state:
                 if staff_email != self.bi_mappings.inverse[i]:
                     raise ValueError("mappings do not match up between states")
                 
-                staff = current.StaffMember_dict[staff_email]
+                staff = current.course_staff_dict[staff_email]
 
                 assignments.append(staff.assigned_hours)
             results.append(np.stack(np.array(assignments), axis=0))
@@ -283,6 +283,7 @@ class state:
         results = np.array(results)
         if len(results) > 1:
             results = np.stack(np.array(results), axis=0)
+        print("results", results)
         if results.shape != (self.week_num - self.weeks_skipped - 1, self.day_ones, 5, 12):
             raise ValueError("results shape does not match up with expected shape. {} != {}".format(results.shape, (self.week_num - self.weeks_skipped - 1, self.day_ones, 5, 12)))
         
@@ -312,22 +313,22 @@ class state:
         # collect each state's staff assignments
         previous_assignments = self.get_day_one_assignments()
 
-        current_availabilities = np.array([None] * len(self.StaffMember_dict))
+        current_availabilities = np.array([None] * len(self.course_staff_dict))
         for email in self.bi_mappings:
             index = self.bi_mappings[email]
-            current_availabilities[index] = self.StaffMember_dict[email].availabilities
+            current_availabilities[index] = self.course_staff_dict[email].availabilities
         if len(current_availabilities) > 1:
             current_availabilities = np.stack(current_availabilities)
 
-        max_hours = np.array([None] * len(self.StaffMember_dict))
-        hours_remaining = np.array([None] * len(self.StaffMember_dict))
-        preferred_contiguous_hours = np.array([None] * len(self.StaffMember_dict))
+        max_hours = np.array([None] * len(self.course_staff_dict))
+        hours_remaining = np.array([None] * len(self.course_staff_dict))
+        preferred_contiguous_hours = np.array([None] * len(self.course_staff_dict))
         for email in self.bi_mappings:
             index = self.bi_mappings[email]
-            max_hours[index] = self.StaffMember_dict[email].preferred_contiguous_hours * self.max_weekly_multiplier
-            hours_remaining[index] = self.StaffMember_dict[email].hours_left
-            preferred_contiguous_hours[index] = self.StaffMember_dict[email].preferred_contiguous_hours
-        if len(self.StaffMember_dict) > 1:
+            max_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours * self.max_weekly_multiplier
+            hours_remaining[index] = self.course_staff_dict[email].hours_left
+            preferred_contiguous_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours
+        if len(self.course_staff_dict) > 1:
             max_hours = np.stack(max_hours)
             hours_remaining = np.stack(hours_remaining)
             preferred_contiguous_hours = np.stack(preferred_contiguous_hours)
@@ -336,13 +337,13 @@ class state:
             changed_hours = np.array([None] * self.day_ones)
             for i in range(self.day_ones):
                 email = self.bi_mappings.inverse[i]
-                changed_hours[i] = self.StaffMember_dict[email].calculate_availabilities_difference(self.prev_state.StaffMember_dict[email].availabilities)
+                changed_hours[i] = self.course_staff_dict[email].calculate_availabilities_difference(self.prev_state.course_staff_dict[email].availabilities)
             if len(changed_hours) > 1:
                 changed_hours = np.stack(changed_hours)
         else:
             changed_hours = np.array([0] * self.day_ones)
 
-        non_day_one_indices = np.array(list(range(self.day_ones, len(self.StaffMember_dict))))
+        non_day_one_indices = np.array(list(range(self.day_ones, len(self.course_staff_dict))))
         return [
             future_oh_demand,
             previous_assignments,
@@ -410,7 +411,7 @@ class state:
     
     def __str__(self):
         prev_state_str = str(self.prev_state.week_num) if self.prev_state else "None"
-        email_keys = list(self.StaffMember_dict.keys())
+        email_keys = list(self.course_staff_dict.keys())
         bi_mappings_str = str(dict(self.bi_mappings)) + ", Inverse: " + str(dict(self.bi_mappings.inverse))
         oh_demand_str = np.array2string(self.oh_demand, precision=2, separator=',', suppress_small=True)
 

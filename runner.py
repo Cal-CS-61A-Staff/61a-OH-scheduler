@@ -57,8 +57,8 @@ def main():
     
     # Run algorithm
     inputs = state.get_algo_inputs()
-    assignments = run_algorithm(inputs)
-    state.set_assignments(assignments)
+    assignments = algorithm.run_algorithm(inputs)
+    #state.set_assignments(assignments)
  
     # Validate algorithm output TODO
     
@@ -79,20 +79,6 @@ def main():
 
 
 
-def run_algorithm(inputs):
-    # Placeholder
-    course_size = inputs[2].shape[0]
-    ans = []
-    for i in range(course_size):
-        assignments = np.zeros((5, 12))
-        hours_target = inputs[3][i]
-        indices = np.random.choice(range(60), hours_target, replace=False)
-        assignments.flat[indices] = 1
-        ans.append(assignments)
-    ans = np.array(ans)
-    if len(ans) > 1:
-        ans = np.stack(ans)
-    return ans
 
 if __name__ == '__main__':
     main()
