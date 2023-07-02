@@ -298,11 +298,11 @@ class state:
                     - Most up-to-date version of the OH demand spreadsheet output for all weeks in the future INCLUDING the week this state is made for.
                 - Prev_assignments: (np_array[# of past states, # of day one staff, 5, 12]):
                 - Availabilities (np_array[# all staff, 5, 12]):
-                - Max_hours (np_array[# all staff]): 
-                - Hours_remaining (np_array[# all staff]):
+                - Max_contiguous_hours (np_array[# all staff]): 
+                - Target_total_future_hours (np_array[# all staff]):
                 - preferred_contiguous_hours(np_array[# all staff]): 
-                - changed_hours(np_array[# of day one staff]):
-                - Non_day_one_indices:
+                - changed_hours_weightings(np_array[# of day one staff]):
+                - Non_day_one_indices:(np_array[# of non-day-one staff])
         """
 
         future_oh_demand = self.oh_demand.take(list(range(self.week_num - 1, self.week_num + self.weeks_remaining - 1)), axis=0)
@@ -320,38 +320,41 @@ class state:
         if len(current_availabilities) > 1:
             current_availabilities = np.stack(current_availabilities)
 
-        max_hours = np.array([None] * len(self.course_staff_dict))
-        hours_remaining = np.array([None] * len(self.course_staff_dict))
+        max_contiguous_hours = np.array([None] * len(self.course_staff_dict))
+        target_total_future_hours = np.array([None] * len(self.course_staff_dict))
         preferred_contiguous_hours = np.array([None] * len(self.course_staff_dict))
+
         for email in self.bi_mappings:
             index = self.bi_mappings[email]
-            max_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours * self.max_weekly_multiplier
-            hours_remaining[index] = self.course_staff_dict[email].hours_left
+            max_contiguous_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours * self.max_weekly_multiplier
+            target_total_future_hours[index] = self.course_staff_dict[email].hours_left
             preferred_contiguous_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours
+
         if len(self.course_staff_dict) > 1:
-            max_hours = np.stack(max_hours)
-            hours_remaining = np.stack(hours_remaining)
+            max_contiguous_hours = np.stack(max_contiguous_hours)
+            target_total_future_hours = np.stack(target_total_future_hours)
             preferred_contiguous_hours = np.stack(preferred_contiguous_hours)
         
         if self.prev_state:
-            changed_hours = np.array([None] * self.day_ones)
+            changed_hours_weightings = np.array([None] * self.day_ones)
             for i in range(self.day_ones):
                 email = self.bi_mappings.inverse[i]
-                changed_hours[i] = self.course_staff_dict[email].calculate_availabilities_difference(self.prev_state.course_staff_dict[email].availabilities)
-            if len(changed_hours) > 1:
-                changed_hours = np.stack(changed_hours)
+                changed_hours_weightings[i] = self.course_staff_dict[email].calculate_availabilities_difference(self.prev_state.course_staff_dict[email].availabilities)
+            if len(changed_hours_weightings) > 1:
+                changed_hours_weightings = np.stack(changed_hours_weightings)
         else:
-            changed_hours = np.array([0] * self.day_ones)
+            changed_hours_weightings = np.array([0] * self.day_ones)
 
         non_day_one_indices = np.array(list(range(self.day_ones, len(self.course_staff_dict))))
+        
         return [
             future_oh_demand,
             previous_assignments,
             current_availabilities,
-            max_hours,
-            hours_remaining,
+            max_contiguous_hours,
+            target_total_future_hours,
             preferred_contiguous_hours,
-            changed_hours,
+            changed_hours_weightings,
             non_day_one_indices
         ]
     
