@@ -32,7 +32,7 @@ def validate_config(config):
     
     # Check each key has a corresponding value
     for key in config:
-        if not config[key]:
+        if config[key] is None:
             raise ValueError(f"Config field {key} is empty")
         
     # Check if google project exists and if we have permission

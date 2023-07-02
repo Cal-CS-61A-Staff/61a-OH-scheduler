@@ -34,7 +34,6 @@ class StaffMember:
             availabilities (np.array): A 5x12 np array of the course staff member's availabilities.
             assigned_hours (np.array): A 5x12 np array of the course staff member's
             assigned hours. Assigned only after the algorithm is run. 
-            hours_left (int): The number of office hours left to assign to this course
             staff member this semester.
 
             NOTE: The following aren't used, and are here for future reference:
@@ -57,8 +56,6 @@ class StaffMember:
         # Extract number from availabilities list and reshape
         availabilities_list = [data_row[i] for i in StaffMember.AVAILABILITIES_INDICES]
         self.availabilities = utils.create_5x12_np_array(availabilities_list)
-
-        self.hours_left = weeks_left * self.weekly_oh_hours
 
         # To be filled by the algorithm after it's done running
         self.assigned_hours = None
@@ -86,12 +83,7 @@ class StaffMember:
         self.semesters_as_ai = int(data_row[StaffMember.SEMESTER_AS_AI_INDEX])
         self.preferred_contiguous_hours = int(data_row[StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX])
 
-        # if the weekly oh hours changed, we replace the hours left with just the new value * weeks left
-        # otherwise we keep it as the old hours_left count. This is to prevent situations where students
-        # resubmit the form and their hours_left count gets "reset".
-        if self.weekly_oh_hours != int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX]):
-            self.weekly_oh_hours = int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX])
-            self.hours_left = weeks_left * self.weekly_oh_hours
+        self.weekly_oh_hours = int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX])
 
         # Reshape availabilities list
         availabilities_list = [data_row[i] for i in StaffMember.AVAILABILITIES_INDICES]
@@ -108,7 +100,6 @@ class StaffMember:
             assignment (np.array): 5x12 np array representing this staff's assignment for the week.
         """
         self.assigned_hours = assignment
-        self.hours_left -= np.sum(assignment)
 
     def calculate_availabilities_difference(self, other_availability):
         """
@@ -137,7 +128,6 @@ class StaffMember:
         info += "Weekly Office Hours: {}\n".format(self.weekly_oh_hours)
         info += "Preferred Contiguous Hours: {}\n".format(self.preferred_contiguous_hours)
         info += "Availabilities:\n{}\n".format(self.availabilities)
-        info += "Hours Left: {}\n".format(self.hours_left)
         info += "Assigned Hours:\n{}\n".format(self.assigned_hours)
         info += "Appointed Position: {}\n".format(self.appointed_position)
         info += "Total Weekly Hours: {}\n".format(self.total_weekly_hours)
@@ -147,7 +137,7 @@ class StaffMember:
         return info
         
     
-class state:
+class State:
     """
     An internal state object for storing relevant information between runs. 
     There should be one state for each week that this algorithm has been run.
@@ -283,7 +273,6 @@ class state:
         results = np.array(results)
         if len(results) > 1:
             results = np.stack(np.array(results), axis=0)
-        print("results", results)
         if results.shape != (self.week_num - self.weeks_skipped - 1, self.day_ones, 5, 12):
             raise ValueError("results shape does not match up with expected shape. {} != {}".format(results.shape, (self.week_num - self.weeks_skipped - 1, self.day_ones, 5, 12)))
         
@@ -298,8 +287,9 @@ class state:
                     - Most up-to-date version of the OH demand spreadsheet output for all weeks in the future INCLUDING the week this state is made for.
                 - Prev_assignments: (np_array[# of past states, # of day one staff, 5, 12]):
                 - Availabilities (np_array[# all staff, 5, 12]):
-                - Max_contiguous_hours (np_array[# all staff]): 
+                - Max_contiguous_hours (np_array[# all staff]):
                 - Target_total_future_hours (np_array[# all staff]):
+                - weekly_target_hours (np_array[# all staff])
                 - preferred_contiguous_hours(np_array[# all staff]): 
                 - changed_hours_weightings(np_array[# of day one staff]):
                 - Non_day_one_indices:(np_array[# of non-day-one staff])
@@ -321,20 +311,41 @@ class state:
             current_availabilities = np.stack(current_availabilities)
 
         max_contiguous_hours = np.array([None] * len(self.course_staff_dict))
-        target_total_future_hours = np.array([None] * len(self.course_staff_dict))
         preferred_contiguous_hours = np.array([None] * len(self.course_staff_dict))
+        weekly_target_hours = np.array([None] * len(self.course_staff_dict))
 
         for email in self.bi_mappings:
             index = self.bi_mappings[email]
             max_contiguous_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours * self.max_weekly_multiplier
-            target_total_future_hours[index] = self.course_staff_dict[email].hours_left
             preferred_contiguous_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours
+            weekly_target_hours[index] = self.course_staff_dict[email].weekly_oh_hours
 
         if len(self.course_staff_dict) > 1:
             max_contiguous_hours = np.stack(max_contiguous_hours)
-            target_total_future_hours = np.stack(target_total_future_hours)
             preferred_contiguous_hours = np.stack(preferred_contiguous_hours)
+            weekly_target_hours = np.stack(weekly_target_hours)
         
+        # hours left = new_weekly_target * total weeks - prev assignments
+
+        # get total weeks from first state
+        current = self
+        while current.prev_state:
+            current = current.prev_state
+        total_weeks = current.weeks_remaining
+
+        target_total_future_hours = np.array([None] * len(self.course_staff_dict))
+        for email in self.course_staff_dict:
+            index = self.bi_mappings[email]
+            target_total_future_hours[index] = self.course_staff_dict[email].weekly_oh_hours * total_weeks
+        
+        prev = self.prev_state
+        while prev:
+            for email in prev.course_staff_dict:
+                index = prev.bi_mappings[email]
+                target_total_future_hours[index] -= np.sum(prev.course_staff_dict[email].assigned_hours)
+            prev = prev.prev_state
+
+
         if self.prev_state:
             changed_hours_weightings = np.array([None] * self.day_ones)
             for i in range(self.day_ones):
@@ -353,9 +364,10 @@ class state:
             current_availabilities,
             max_contiguous_hours,
             target_total_future_hours,
+            weekly_target_hours,
             preferred_contiguous_hours,
             changed_hours_weightings,
-            non_day_one_indices
+            non_day_one_indices,
         ]
     
     def validate_mappings(self):
@@ -381,8 +393,6 @@ class state:
         Returns:
             None
         """
-        if self.prev_state:
-            self.prev_state.serialize(project_id, bucket_name, prefix)
         place_holder = self.prev_state
         self.prev_state = None
         object_name = '{}/{}.pkl'.format(prefix, self.week_num)
@@ -395,8 +405,7 @@ class state:
             blob = storage.Blob(object_name, bucket)
             blob.delete()
         except Exception as e:
-            print(f"Creating new blob for {object_name}.")
-
+            print(f"Creating new blob for state {self.week_num}")
         try:
             # Pickle the Python object to a byte stream
             byte_stream = io.BytesIO()
@@ -406,7 +415,7 @@ class state:
             byte_stream.seek(0)
             blob = bucket.blob(object_name)
             blob.upload_from_file(byte_stream)
-            print("State object uploaded successfully.")
+            print(f"File uploaded successfully for state {self.week_num}")
         except Exception as e:
             print(f"Something went wrong while serializing state #{self.week_num}. Error: {str(e)}")
         finally:
@@ -443,7 +452,8 @@ class state:
             f"Availabilities: {values[2]}\n",
             f"Max hours: {values[3]}\n",
             f"Hours remaining: {values[4]}\n",
-            f"Preferred contiguous hours: {values[5]}\n",
-            f"Changed hours: {values[6]}\n",
-            f"Non day one indices: {values[7]}\n"
+            f"Weekly target hours: {values[5]}\n"
+            f"Preferred contiguous hours: {values[6]}\n",
+            f"Changed hours: {values[7]}\n",
+            f"Non day one indices: {values[8]}\n"
         )

@@ -41,12 +41,16 @@ def main():
         last_state = utils.deserialize(config.get("project_id"), config["bucket_name"], latest_week, config["weeks_skipped"], prefix)
     else:
         last_state = None
+    
+    if last_state and last_state.week_num == config["weeks"]:
+        print(f"ERROR: The algorithm has already been run for all weeks. The last state was for week {config['weeks']}. Exiting.")
+        return
 
     if latest_week == config['weeks']:
         raise RuntimeError("Allotted # of weeks have already passed. Exiting.")
 
     # Create new state object
-    state = State.state(last_state, 
+    state = State.State(last_state, 
                         demand, 
                         availabilities, 
                         config["class"], 
@@ -58,6 +62,7 @@ def main():
     # Run algorithm
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
+    state.serialize(config["project_id"], config["bucket_name"], prefix)
     #state.set_assignments(assignments)
  
     # Validate algorithm output TODO
