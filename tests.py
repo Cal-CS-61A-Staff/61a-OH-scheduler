@@ -4,85 +4,98 @@ import State
 from config_read import *
 import os
 import shutil
+from google.cloud import storage
 import numpy as np
+import config_read
+import validation
 
 sheets = ["https://docs.google.com/spreadsheets/d/1zL-lB4KNGmGz-CMAuAb8c_UBtlanwRVad-rN6ZOrtMg/edit#gid=1765561727", 
           "https://docs.google.com/spreadsheets/d/1Z0aTQPV5fS-iwhV7lWy74ocQmawtT1tpEGh1qWC6Zro/edit#gid=1765561727",
           "https://docs.google.com/spreadsheets/d/1AEeEHHfzG3ov8oyxLvWTjfcukOHN2ut8TsbOh1INyLA/edit#gid=1765561727"]
 
-def create_new_state(sheet):
-    config = read_config("config.json")
-    availabilities_id = get_google_sheets_id(sheet)
-    availabilities = utils.get_availabilities(availabilities_id, AVAILABILITIES_RANGE)
+AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
+DEMAND_RANGE = 'Demand!A2:E'
 
-    demand_id = get_google_sheets_id(config["demand_link"])
-    demand = utils.get_demand(demand_id, DEMAND_RANGE, config["weeks"])
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
-    latest_week = utils.get_latest_week(config.get("path_to_bucket"))
-    if latest_week > -1:
-        last_state = utils.deserialize(config.get("path_to_bucket"), latest_week, config["weeks_skipped"])
-    else:
-        last_state = None
-
-    state = State.state(last_state, demand, availabilities, config["class"], config["semester"], config["weeks"], config["weekly_hour_multiplier"], config["weeks_skipped"])
-    state.serialize(config.get("path_to_bucket"))
-    return state
-
-def delete_folder_contents(folder_path):
-    """Deletes all files and subdirectories within the specified folder.
-
-    Args:
-        folder_path (str): Path to the folder to be cleared.
-    """
-    for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-        elif os.path.isdir(file_path):
-            shutil.rmtree(file_path)
-
-def check_deserialize():
-    config = read_config("config.json")
-    latest_week = utils.get_latest_week(config.get("path_to_bucket"))
-    if latest_week > -1:
-        last_state = utils.deserialize(config.get("path_to_bucket"), latest_week, config["weeks_skipped"])
-        print(last_state)
-        last_state.print_algo_outputs()
-    else:
-        print("No state found")
+def delete_files_with_prefix(project_id, bucket_name, prefix):
+    # Create a client object for interacting with the Google Cloud Storage API
+    client = storage.Client(project=project_id)
+    
+    # Get the bucket object
+    bucket = client.get_bucket(bucket_name)
+    
+    # List all the files in the bucket with the given prefix
+    blobs = bucket.list_blobs(prefix=prefix)
+    
+    # Delete each file with the specified prefix
+    for blob in blobs:
+        blob.delete()
+    
+    print(f"All files with prefix '{prefix}' have been deleted from the bucket '{bucket_name}'.")
         
 def basic_test():
-    config = read_config("config.json")
-    delete_folder_contents(config.get("path_to_bucket"))
-    states = []
-    for sheet in sheets:
-        state = create_new_state(sheet)
-        state.set_assignments(generate_dummy_assignments(len(state.course_staff_dict)))
-        state.serialize(config.get("path_to_bucket"))
-        states.append(state)
-    print("######### FIRST STATE #########")
-    print(states[0])
-    states[0].print_algo_outputs()
-    print("######### SECOND STATE #########")
-    print(states[1])
-    states[1].print_algo_outputs()
-    print("######### THIRD STATE #########")
-    print(states[2])
-    states[2].print_algo_outputs()
+    """Tests for 2 students who only have 3 slots available every week, which never changes, that matches up perfectly with OH_demand.
+    """
+    config = config_read.read_config("tests/basic_test.json")
+    validation.validate_config(config)
+    prefix = f"{config['class']}-{config['semester']}"
+    
+    # get spreadsheets
+    availabilities_id = config_read.get_google_sheets_id(config["availabilities_link"])
+    availabilities = utils.get_availabilities(availabilities_id, AVAILABILITIES_RANGE)
+    validation.validate_availabilities(availabilities)
 
-def generate_dummy_assignments(staff_number):
-    assignments = []
-    for i in range(staff_number):
-        array = np.zeros((5, 12), dtype=int)
+    demand_id = config_read.get_google_sheets_id(config["demand_link"])
+    demand = utils.get_demand(demand_id, DEMAND_RANGE, config["weeks"])
+    # already validates OH demand in get_demand. Could add more validation here if needed
+
+    delete_files_with_prefix(config["project_id"], config["bucket_name"], prefix)
+
+    last_state = None
+    for i in range(config["weeks"] - config["weeks_skipped"]):
+        state = State.State(last_state, 
+                        demand, 
+                        availabilities, 
+                        config["class"], 
+                        config["semester"], 
+                        config["weeks"], 
+                        config["weekly_hour_multiplier"], 
+                        config["weeks_skipped"])
+        inputs = state.get_algo_inputs()
+        assignments = run_algorithm(inputs)
+        state.set_assignments(assignments)
+        last_state = state
     
-        for i in range(5):
-            ones_indices = np.random.choice(12, 3, replace=False)
-            array[i, ones_indices] = 1
-        
-        assignments.append(array)
-    assignments = np.array(assignments)
-    return assignments
-    
+    current = state
+    while current:
+        print(f"week {current.week_num} assignments:")
+        for email in current.course_staff_dict:
+            index = current.bi_mappings[email]
+            print(f"user {email}'s assignments are:")
+            print(current.course_staff_dict[email].assigned_hours)
+            print("\n\n\n")
+        print(f"week {current.week_num} inputs:")
+        current.print_algo_outputs()
+        print("\n\n\n")
+        current = current.prev_state
+
+    state.serialize(config["project_id"], config["bucket_name"], prefix)
+
+def run_algorithm(inputs):
+    # Placeholder
+    course_size = inputs[2].shape[0]
+    ans = []
+    for i in range(course_size):
+        assignments = np.zeros((5, 12))
+        hours_target = inputs[5][i]
+        indices = np.random.choice(range(60), hours_target, replace=False)
+        assignments.flat[indices] = 1
+        ans.append(assignments)
+    ans = np.array(ans)
+    if len(ans) > 1:
+        ans = np.stack(ans)
+    return ans
 
 if __name__ == '__main__':
     basic_test()

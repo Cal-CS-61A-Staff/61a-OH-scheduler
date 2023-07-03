@@ -2,10 +2,6 @@ import json
 import utils
 import State
 
-# The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet changes.
-AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
-DEMAND_RANGE = 'Demand!A2:E'
-
 def read_config(config):
     """Reads the configuration file and creates a dictionary
 

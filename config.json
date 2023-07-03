@@ -1,10 +1,10 @@
 {
     "demand_link": "https://docs.google.com/spreadsheets/d/1GUbXCEBczIe1WBeYVP6p0YWP58YuToJuzIJf-xtUCC8/edit#gid=0",
     "availabilities_link": "https://docs.google.com/spreadsheets/d/1823eO5XTFRPjvisZB-vZWanu0aFE3Y3Fpoyds_34uy8/edit#gid=1765561727",
-    "project_id": "PLACEHOLDER",
-    "bucket_name": "PLACEHOLDER",
+    "project_id": "cs61a-140900",
+    "bucket_name": "oh-scheduler",
     "class": "61a",
-    "semester": "sp23",
+    "semester": "fa22",
     "weeks": 15, 
     "weekly_hour_multiplier": 2,
     "start_date": "2021-01-19",

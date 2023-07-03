@@ -1,9 +1,7 @@
 from __future__ import print_function
 import os.path
 import re
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import collections
@@ -16,12 +14,13 @@ import io
 from google.cloud import storage
 import config_read
 
-# Set to readonly
-SCOPE = ['https://www.googleapis.com/auth/spreadsheets.readonly',
+# Service Account Scopes
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly',
          'https://www.googleapis.com/auth/calendar']
 
+
 def get_sheet_values(spread_sheet_id, range):
-    """ Creates credentials and reads from a google sheet.
+    """ Reads items from a google sheet.
 
     Args:
         spread_sheet_id (string): ID of the google sheet to read from.
@@ -30,41 +29,20 @@ def get_sheet_values(spread_sheet_id, range):
     Returns:
        list: Returns a list of lists, where each list is a row in the sheet. The first row is the header row.
     """
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPE)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPE)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
 
-    try:
-        service = build('sheets', 'v4', credentials=creds)
+    # Creating credentials
+    creds = service_account.Credentials.from_service_account_file(
+        "credentials.json", scopes=SCOPES
+    )
 
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=spread_sheet_id,
-                                    range=range).execute()
+    service = build('sheets', 'v4', credentials = creds)
 
-        # Get values from sheet
-        values = result.get('values', [])
-        if not values:
-            print('No data found.')
-            return None
-        return values
-    except HttpError as err:
-        print(err)
-        return None
+    # Calling the Sheets API for values (if this errors, that's fine, the Cloud Function will just crash)
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=spread_sheet_id, range=range).execute()
+    values = result.get('values', [])
+
+    return values
 
 def get_demand(sheet_id, range, total_weeks):
     """
@@ -80,10 +58,10 @@ def get_demand(sheet_id, range, total_weeks):
         Exception: No OH demand was found for this link/range
 
     Returns:
-        np_array: a (total_weeks, days, times) np array of the demand for OH
+        np_array: OH demand. Shape: (total_weeks, days, times)
     """
     values = get_sheet_values(sheet_id, range)
-    if not values:
+    if values == [[]]:
         raise Exception('No OH demand information found.')
     
     output = np.full((total_weeks, 5, 12), -1)
@@ -91,12 +69,11 @@ def get_demand(sheet_id, range, total_weeks):
     hours_mapping = {"9:00 AM": 0, "10:00 AM": 1, "11:00 AM": 2, "12:00 PM": 3, "1:00 PM": 4, "2:00 PM": 5, "3:00 PM": 6, "4:00 PM": 7, "5:00 PM": 8, "6:00 PM": 9, "7:00 PM": 10, "8:00 PM": 11}
     next_hour_validation = {"9:00 AM": "10:00 AM", "10:00 AM": "11:00 AM", "11:00 AM": "12:00 PM", "12:00 PM": "1:00 PM", "1:00 PM": "2:00 PM", "2:00 PM": "3:00 PM", "3:00 PM": "4:00 PM", "4:00 PM": "5:00 PM", "5:00 PM": "6:00 PM", "6:00 PM": "7:00 PM", "7:00 PM": "8:00 PM", "8:00 PM": "9:00 PM"}
 
-
     for row in values:
         if row[0]: # Ensure merged cells (empty cells after merged value) use the correct week
             weeks_str = row[0]
             valid_week = re.compile(r"([0-9]+)||([0-9]+, )+")
-            # TODO: Add validation for unique weeks, no duplicate weeks
+
             if not valid_week.match(weeks_str):
                 raise ValueError(f"Error: {weeks_str} is not in the correct format (e.g. 2, 3, 4).")
             week_indices = [int(week) for week in weeks_str.split(", ")]
@@ -117,6 +94,7 @@ def get_demand(sheet_id, range, total_weeks):
         starting_hour = row[2]
         ending_hour = row[3]
         valid_hour = re.compile(r"([0-9]+:00 [AP]M)")
+
         if not (valid_hour.match(starting_hour) and valid_hour.match(ending_hour)):
             raise ValueError(f"Error: time inputs for row {row} are wrong. Must be a string for an hour between 9:00 AM and 9:00 PM.")
         
@@ -136,19 +114,19 @@ def get_demand(sheet_id, range, total_weeks):
         
         for week_index in week_indices:
             if week_index < 1 or week_index > total_weeks:
-                raise ValueError(f"Error: {week_index} is not a valid week. Must be between 1 and total_weeks ({total_weeks}) (inclusive).")
+                raise ValueError(f"Error: Week {week_index} is not a valid week. Must be between 1 and total_weeks ({total_weeks}) (inclusive).")
             if output[week_index - 1][day_index][hour_index] != -1:
-                raise ValueError(f"Error: {week_index} {day} {starting_hour} is already filled. Is there a duplicate week/day/hour?")
+                raise ValueError(f"Error: Week {week_index}, {day} {starting_hour} is already filled. Is there a duplicate week/day/hour?")
             output[week_index - 1][day_index][hour_index] = int(num_staff)
 
     if np.any(output == -1):
-        raise ValueError("Invalid array. Some values were not filled. Ensure that there is an entry in the oh demand spreadsheet has for every week from 1 to total weeks, for each day, and for all hours 9:00 AM to 9:00 PM, and that there are no duplicate weeks/days/hours.")
+        raise ValueError("Invalid array. Some values were not filled. Ensure that there is an entry in the oh demand spreadsheet has for every week from 1 to total weeks, " + \
+                         "for each day, and for all hours 9:00 AM to 9:00 PM, and that there are no duplicate weeks/days/hours.")
     return output
 
 def get_availabilities(sheet_id, range):
     """
     Gets a list of lists representing each course staff in the availabilities spreadsheet.
-
 
     Args:
         sheet_id (string): ID of the google sheet to read from. 
@@ -164,19 +142,16 @@ def get_availabilities(sheet_id, range):
     
     rows = values[1:]
     for row in rows:
-        row[State.course_staff.total_weekly_hours_index] = int(row[State.course_staff.total_weekly_hours_index])
-        row[State.course_staff.semesters_on_staff_index] = int(row[State.course_staff.semesters_on_staff_index])
-        row[State.course_staff.semesters_as_ai_index] = int(row[State.course_staff.semesters_as_ai_index])
-        row[State.course_staff.weekly_oh_hours_index] = int(row[State.course_staff.weekly_oh_hours_index])
-        row[State.course_staff.preferred_contiguous_hours_index] = int(row[State.course_staff.preferred_contiguous_hours_index])
+        row[State.StaffMember.TOTAL_WEEKLY_HOURS_INDEX] = int(row[State.StaffMember.TOTAL_WEEKLY_HOURS_INDEX])
+        row[State.StaffMember.SEMESTERS_ON_STAFF_INDEX] = int(row[State.StaffMember.SEMESTERS_ON_STAFF_INDEX])
+        row[State.StaffMember.SEMESTER_AS_AI_INDEX] = int(row[State.StaffMember.SEMESTER_AS_AI_INDEX])
+        row[State.StaffMember.WEEKLY_OH_HOURS_INDEX] = int(row[State.StaffMember.WEEKLY_OH_HOURS_INDEX])
+        row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX] = int(row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX])
 
-        for i in State.course_staff.availabilities_indices:
+        for i in State.StaffMember.AVAILABILITIES_INDICES:
             preference = extract_preference(row[i])
             row[i] = preference
     return rows
-
-
-
 
 def create_5x12_np_array(input_list):
     """
