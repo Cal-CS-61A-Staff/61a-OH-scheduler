@@ -252,7 +252,8 @@ class State:
         """Returns all past assignments of day one staff members
 
         Returns:
-            np.array: Np array of shape (# of previous weeks, # of day one staff, 5, 12) representing the assignments for each previous week.
+            np.array: Np array of shape (# of day one staff, # of previous weeks, 5, 12)
+                        representing the assignments for each previous week.
         """
         results = []
         current = self.prev_state
@@ -277,7 +278,7 @@ class State:
         if results.shape != (self.week_num - self.weeks_skipped - 1, self.day_ones, 5, 12):
             raise ValueError("results shape does not match up with expected shape. {} != {}".format(results.shape, (self.week_num - self.weeks_skipped - 1, self.day_ones, 5, 12)))
         
-        return results
+        return np.swapaxes(results, 0, 1)
 
     
     def get_algo_inputs(self):
@@ -286,7 +287,7 @@ class State:
             list: list of all inputs required for the algorithm:
                 - OH demand np array (np_array [# future weeks, 5, 12]):
                     - Most up-to-date version of the OH demand spreadsheet output for all weeks in the future INCLUDING the week this state is made for.
-                - Prev_assignments: (np_array[# of past states, # of day one staff, 5, 12]):
+                - Prev_assignments: (np_array[# of day one staff, # of past states, 5, 12]):
                 - Availabilities (np_array[# all staff, 5, 12]):
                 - Max_contiguous_hours (np_array[# all staff]):
                 - Target_total_future_hours (np_array[# all staff]):

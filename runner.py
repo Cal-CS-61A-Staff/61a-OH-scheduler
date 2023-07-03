@@ -62,8 +62,7 @@ def main():
     # Run algorithm
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
-    print(assignments)
-    #state.set_assignments(assignments)
+    state.set_assignments(assignments)
  
     # Validate algorithm output TODO
     

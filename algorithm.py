@@ -1,6 +1,7 @@
 from cvxpy import *
 import numpy as np
 import cvxpy as cp
+from time import perf_counter
 
 # Defining weights
 U_3_1 = 10
@@ -31,24 +32,24 @@ def var_to_np(decision_var):
     return vfunc(decision_var)
 
 def run_algorithm(inputs):
-    input_oh_demand = inputs[0]                        # (# of future weeks, 5, 12)
-    input_previous_weeks_assignments = inputs[1]              # (# of past weeks, # of day one staff, 5, 12)
-    input_staff_availabilities = inputs[2]                # (# of all staff, 5, 12)
-    input_max_contig = inputs[3]          # (# of all staff, )
-    input_target_total_future_hours = inputs[4]            # (# of all staff, )
-    input_target_weekly_hours = inputs[5]           # (# of all staff, )
-    input_preferred_contiguous_hours = inputs[6]    # (# of all staff, )
-    input_changed_hours_weightings = inputs[7]      # (# of day one staff, )
-    input_non_day_one_indices = inputs[8]            # (# of non day one staff, )
+    input_oh_demand = inputs[0]                         # (# of future weeks, 5, 12)
+    input_previous_weeks_assignments = inputs[1]        # (# of day one staff, # of past weeks, 5, 12)
+    input_staff_availabilities = inputs[2]              # (# of all staff, 5, 12)
+    input_max_contig = inputs[3]                        # (# of all staff, )
+    input_target_total_future_hours = inputs[4]         # (# of all staff, )
+    input_target_weekly_hours = inputs[5]               # (# of all staff, )
+    input_preferred_contiguous_hours = inputs[6]        # (# of all staff, )
+    input_changed_hours_weightings = inputs[7]          # (# of day one staff, )
+    input_non_day_one_indices = inputs[8]               # (# of non day one staff, )
 
-
+    print(input_previous_weeks_assignments.shape)
     m = input_max_contig.shape[0]
     m_non_day_ones = input_non_day_one_indices.shape[0] # WARNING: assumes non-day one staff are 
                                                         # added to the end of each prev_assignments array
     m_day_ones = m - m_non_day_ones
 
     n = input_oh_demand.shape[0]
-    p = input_previous_weeks_assignments.shape[0]
+    p = input_previous_weeks_assignments.shape[1]
 
     print("Setting up algorithm...")
     # Define the decision variable
@@ -159,8 +160,10 @@ def run_algorithm(inputs):
     print(f"Number of constraints: {len(constraints)}")
 
     print("Running algorithm...")
+    start = perf_counter()
     prob = Problem(obj, constraints)
     prob.solve(verbose=False)
     print(f"Algorithm status: {prob.status}. Objective value: {prob.value}")
+    print(f"Time elapsed: {perf_counter() - start}")
 
     return var_to_np(A)[:, 0, :, :]
