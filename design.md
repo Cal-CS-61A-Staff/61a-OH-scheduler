@@ -25,7 +25,7 @@ state_df
 
 this_weeks_assignments
 - Np array of shape (# of staff, 5, 12) representing the assignments for this week 
-- If assignments haven’t been calculated yet, this will be None
+- If assignments haven't been calculated yet, this will be None
 
 non_day_ones
 - Email addresses of staff members who were not originally added to the algorithm for the first week

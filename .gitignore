@@ -3,4 +3,4 @@ token.json
 __pycache__
 states
 lib
-__pycache__/State.cpython-311.pyc
+.vscode

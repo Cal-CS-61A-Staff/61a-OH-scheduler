@@ -62,7 +62,7 @@ def main():
     # Run algorithm
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
-    state.serialize(config["project_id"], config["bucket_name"], prefix)
+    print(assignments)
     #state.set_assignments(assignments)
  
     # Validate algorithm output TODO
@@ -80,8 +80,7 @@ def main():
     #                           config["calendar_event_location"], 
     #                           config["calendar_event_description"])
     
-    # state.serialize(config["project_id"], config["bucket_name"], prefix)
-
+    state.serialize(config["project_id"], config["bucket_name"], prefix)
 
 
 

@@ -106,24 +106,25 @@ class StaffMember:
         Calculates the difference between this StaffMember's availabilities and
         another availabilities array. The difference is defined with this formula:
         Convert both availabilities matrices to boolean values: (1-4 is 1, 5 is
-        0). Let X’ be the input availabilities and X be the staff’s
-        availabilities. Return (X - X’).sum((1, 2)). The difference is then divided
+        0). Let X' be the input availabilities and X be the staff's
+        availabilities. Return (X - X').sum((1, 2)). The difference is then divided
         by the boolean sum of the other_availability matrix.
+        TODO: change the docstring
 
         Args:
             other_availability (np_array): The other availabilities array to compare to.
 
         Returns:
-            difference (int): The difference score, defined by (X - X’).sum((1, 2))/sum(X')
+            difference (int): The difference score, defined by (X - X').sum((1, 2))/sum(X')
         """
 
         this_converted = np.where(self.availabilities == 5, 0, 1)
         other_converted = np.where(other_availability == 5, 0, 1)
 
-        return np.sum(this_converted - other_converted)/np.sum(other_converted)
+        return np.sum(np.maximum(other_converted - this_converted, 0))/np.sum(other_converted)
 
     def __str__(self) -> str:
-        info = "Course Staff Student:\n"
+        info = "StaffMember Object:\n"
         info += "Email: {}\n".format(self.email)
         info += "Weekly Office Hours: {}\n".format(self.weekly_oh_hours)
         info += "Preferred Contiguous Hours: {}\n".format(self.preferred_contiguous_hours)
@@ -167,7 +168,7 @@ class State:
                 - Availability (Np array of shape (5, 12))
                 - # of allotted hours remaining
                 - this_weeks_assignments (Np array of shape (# of staff, 5, 12) representing the assignments for this week)
-                    If assignments haven’t been calculated yet, this will be None.
+                    If assignments haven't been calculated yet, this will be None.
             non_day_ones (list): Email addresses of staff members who were not originally added to the algorithm for the first week.
             rows_parsed (int): The number of rows from the availabilities sheet values visited so far.
 
@@ -417,7 +418,7 @@ class State:
             blob.upload_from_file(byte_stream)
             print(f"File uploaded successfully for state {self.week_num}")
         except Exception as e:
-            print(f"Something went wrong while serializing state #{self.week_num}. Error: {str(e)}")
+            raise RuntimeError(f"Something went wrong while serializing state #{self.week_num}. Error: {str(e)}")
         finally:
             self.prev_state = place_holder
     
