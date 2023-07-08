@@ -49,7 +49,12 @@ def run_algorithm(inputs):
     m_day_ones = m - m_non_day_ones
 
     n = input_oh_demand.shape[0]
-    p = input_previous_weeks_assignments.shape[1]
+
+    try:
+        p = input_previous_weeks_assignments.shape[1]
+    except IndexError as e:
+        p = None
+        print("No previous weeks. Removing past consistency constraint.")
 
     print("Setting up algorithm...")
     # Define the decision variable
@@ -126,20 +131,22 @@ def run_algorithm(inputs):
     # 3.5: Consistent Weekly Hours (w/o MIQP)
     current_week = A[:, 0, :, :] # shape: (# of staff, 5, 12)
 
-    prev_weeks_weights = list(reversed(list(map(lambda_func, np.arange(1, p + 1)))))
 
     # Assuming input_previous_weeks_assignments[0] is the first week the OH scheduler ran
     term_3_5 = 0
     # Match current week with the past
-    for prev_i in range(p):
-        
-        for staff_i in range(m_day_ones):
-            for day_i in range(5):
-                for hour_i in range(12):
-                    term_3_5 += cp.maximum(input_previous_weeks_assignments[staff_i, prev_i, day_i, hour_i] - \
-                                           current_week[staff_i, day_i, hour_i], 0) * \
-                                           prev_weeks_weights[prev_i] * \
-                                           (1 - input_changed_hours_weightings[staff_i])
+    if p:
+        prev_weeks_weights = list(reversed(list(map(lambda_func, np.arange(1, p + 1)))))
+
+        for prev_i in range(p):
+            
+            for staff_i in range(m_day_ones):
+                for day_i in range(5):
+                    for hour_i in range(12):
+                        term_3_5 += cp.maximum(input_previous_weeks_assignments[staff_i, prev_i, day_i, hour_i] - \
+                                            current_week[staff_i, day_i, hour_i], 0) * \
+                                            prev_weeks_weights[prev_i] * \
+                                            (1 - input_changed_hours_weightings[staff_i])
                                            
 
     # Match current week with future weeks
