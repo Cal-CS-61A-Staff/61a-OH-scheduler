@@ -63,7 +63,7 @@ def main():
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
     state.set_assignments(assignments)
- 
+
     # Validate algorithm output TODO
     
     # Email send
@@ -79,8 +79,10 @@ def main():
     #                           config["calendar_event_location"], 
     #                           config["calendar_event_description"])
     
-    state.serialize(config["project_id"], config["bucket_name"], prefix)
+    # state.serialize(config["project_id"], config["bucket_name"], prefix)
 
+    np.save("demand.npy", demand)
+    
 
 
 if __name__ == '__main__':

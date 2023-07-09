@@ -5,8 +5,8 @@ from time import perf_counter
 
 # Defining weights
 U_3_1 = 10
-U_3_2 = 100
-U_3_3 = 1
+U_3_2 = 10
+U_3_3 = 500
 U_3_4 = 100
 U_3_5 = 100
 
@@ -14,7 +14,7 @@ U_3_5 = 100
 lambda_func = lambda x: np.exp(-0.2 * x)
 
 # Mapping between rating and displeasure used in term 3.4 (minimize displeasure)
-RATE_TO_DISPLEASURE_MAPPING = {1: 0, 2: 2, 3: 8, 4: 16, 5: 1e5}
+RATE_TO_DISPLEASURE_MAPPING = {1: 0, 2: 2, 3: 8, 4: 16, 5: 1e8}
 
 
 
@@ -49,7 +49,12 @@ def run_algorithm(inputs):
     m_day_ones = m - m_non_day_ones
 
     n = input_oh_demand.shape[0]
-    p = input_previous_weeks_assignments.shape[1]
+
+    try:
+        p = input_previous_weeks_assignments.shape[1]
+    except IndexError as e:
+        p = None
+        print("No previous weeks. Removing past consistency constraint.")
 
     print("Setting up algorithm...")
     # Define the decision variable
@@ -90,7 +95,7 @@ def run_algorithm(inputs):
     T = input_target_weekly_hours[:, None].repeat(n, axis=1)
     X_minus_T = X - T
 
-    # Apply maximum on each variable, then perform a sum of squares
+    # Apply maximum on each variable with 0
     term_3_1 = 0
     for staff_i in range(m):
         for week_i in range(n):
@@ -111,6 +116,8 @@ def run_algorithm(inputs):
         for day_i in range(5):
             for hour_i in range(12):
                 term_3_3 += cp.maximum(input_oh_demand[week_i, day_i, hour_i] - X[week_i, day_i, hour_i], 0)
+                term_3_3 += cp.maximum(X[week_i, day_i, hour_i] - input_oh_demand[week_i, day_i, hour_i], 0)
+
 
     # 3.4: Scheduling Assignment Displeasure
 
@@ -126,20 +133,22 @@ def run_algorithm(inputs):
     # 3.5: Consistent Weekly Hours (w/o MIQP)
     current_week = A[:, 0, :, :] # shape: (# of staff, 5, 12)
 
-    prev_weeks_weights = list(reversed(list(map(lambda_func, np.arange(1, p + 1)))))
 
     # Assuming input_previous_weeks_assignments[0] is the first week the OH scheduler ran
     term_3_5 = 0
     # Match current week with the past
-    for prev_i in range(p):
-        
-        for staff_i in range(m_day_ones):
-            for day_i in range(5):
-                for hour_i in range(12):
-                    term_3_5 += cp.maximum(input_previous_weeks_assignments[staff_i, prev_i, day_i, hour_i] - \
-                                           current_week[staff_i, day_i, hour_i], 0) * \
-                                           prev_weeks_weights[prev_i] * \
-                                           (1 - input_changed_hours_weightings[staff_i])
+    if p:
+        prev_weeks_weights = list(reversed(list(map(lambda_func, np.arange(1, p + 1)))))
+
+        for prev_i in range(p):
+            
+            for staff_i in range(m_day_ones):
+                for day_i in range(5):
+                    for hour_i in range(12):
+                        term_3_5 += cp.maximum(input_previous_weeks_assignments[staff_i, prev_i, day_i, hour_i] - \
+                                            current_week[staff_i, day_i, hour_i], 0) * \
+                                            prev_weeks_weights[prev_i] * \
+                                            (1 - input_changed_hours_weightings[staff_i])
                                            
 
     # Match current week with future weeks
@@ -166,4 +175,8 @@ def run_algorithm(inputs):
     print(f"Algorithm status: {prob.status}. Objective value: {prob.value}")
     print(f"Time elapsed: {perf_counter() - start}")
 
-    return var_to_np(A)[:, 0, :, :]
+    all_assignments = var_to_np(A)
+
+    np.save("assignments.npy", all_assignments)
+
+    return all_assignments[:, 0, :, :]
