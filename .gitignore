@@ -4,3 +4,5 @@ __pycache__
 states
 lib
 .vscode
+oauth_secret.json
+local_oauth_secret.json
