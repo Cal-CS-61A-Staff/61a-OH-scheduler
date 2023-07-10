@@ -318,7 +318,7 @@ class State:
 
         for email in self.bi_mappings:
             index = self.bi_mappings[email]
-            max_contiguous_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours * self.max_weekly_multiplier
+            max_contiguous_hours[index] = self.course_staff_dict[email].weekly_oh_hours * self.max_weekly_multiplier
             preferred_contiguous_hours[index] = self.course_staff_dict[email].preferred_contiguous_hours
             weekly_target_hours[index] = self.course_staff_dict[email].weekly_oh_hours
 

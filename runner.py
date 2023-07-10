@@ -61,8 +61,7 @@ def main():
     
     # Run algorithm
     inputs = state.get_algo_inputs()
-    #assignments = algorithm.run_algorithm(inputs) TODO: REVERT BACK LATER
-    assignments = np.load("new_assignments.npy")[:, 0, :, :]
+    assignments = algorithm.run_algorithm(inputs)
 
     state.set_assignments(assignments)
 
@@ -72,6 +71,7 @@ def main():
     mappings = state.bi_mappings
     first_monday = utils.nearest_future_monday(config["start_date"])
     starting_monday = first_monday + timedelta((state.week_num - config["weeks_skipped"] - 1)* 7)
+
     for i in range(assignments.shape[0]):
         email = mappings.inverse[i]
         send_email.send_invites(email, 
