@@ -6,3 +6,6 @@ lib
 .vscode
 oauth_secret.json
 local_oauth_secret.json
+assignments.npy
+new_assignments.npy
+demand.npy

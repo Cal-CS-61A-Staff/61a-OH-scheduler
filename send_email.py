@@ -77,11 +77,12 @@ def send_invites(email, np_array, start_date, calendar_name, calendar_location, 
                     ],
                     'reminders': {
                         'useDefault': True,
-                    },
+                    }
                 }
 
                 # Call the Calendar API
-                event = service.events().insert(calendarId='primary', sendNotifications=True, body=event).execute()
+                event = service.events().insert(body=event, calendarId='primary', sendUpdates='all').execute()
+                print(f"Email sent for {email}")
             j += 1
             
 
@@ -92,4 +93,4 @@ if __name__ == "__main__":
 
     monday_date = utils.nearest_future_monday('2023-07-17')
     print(timeslots)
-    send_invites('main.share.us@gmail.com', timeslots, monday_date, "OH time", "warren", "damn I love this OH")
+    send_invites('kevin.x.han@berkeley.edu', timeslots, monday_date, "OH time", "warren", "damn I love this OH")
