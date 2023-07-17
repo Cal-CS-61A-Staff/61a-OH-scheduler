@@ -4,10 +4,10 @@ import cvxpy as cp
 from time import perf_counter
 
 # Defining weights
-U_3_1 = 10
-U_3_2 = 10
-U_3_3 = 500
-U_3_4 = 100
+U_3_1 = 200
+U_3_2 = 50
+U_3_3 = 700
+U_3_4 = 50
 U_3_5 = 100
 
 # Weight fxn used in term 3.5 (consistent weekly hours)
@@ -88,18 +88,36 @@ def run_algorithm(inputs):
                         total += A[staff_i, week_i, day_i, start + i]
                     constraints.append(total <= input_max_contig[staff_i])
 
+    # 2.3 (TESTING) no timeslot should have > X number of absences
+    X_2_3 = np.sum(A, axis=0)
+
+    for week_i in range(n):
+        for day_i in range(5):
+            for hour_i in range(12):
+                constraints.append(input_oh_demand[week_i, day_i, hour_i] - X_2_3[week_i, day_i, hour_i] <= 2)
+
+    # 2.4 (TEMP/TESTING) no one should be doing >3+ their target weekly hours
+    X_2_4 = A.sum((2, 3))
+    T = input_target_weekly_hours[:, None].repeat(n, axis=1)
+    for staff_i in range(m):
+        for week_i in range(n):
+            constraints.append(X_2_4[staff_i, week_i] - T <= 2)
+
+
     # ---------------- Soft Constraints (CP objective) ----------------
 
     # 3.1: Minimize Maximum-Weekly-Hour
     X = A.sum((2, 3)) # shape: (# of staff, # of remaining weeks)
     T = input_target_weekly_hours[:, None].repeat(n, axis=1)
     X_minus_T = X - T
+    T_minus_X = T - X
 
     # Apply maximum on each variable with 0
     term_3_1 = 0
     for staff_i in range(m):
         for week_i in range(n):
             term_3_1 += cp.maximum(X_minus_T[staff_i, week_i], 0)
+            term_3_1 += cp.maximum(T_minus_X[staff_i, week_i], 0)
 
 
     # 3.2 (w/o QC): Minimize Total Future Hour Violations Per Staff
