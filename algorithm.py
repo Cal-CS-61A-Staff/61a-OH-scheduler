@@ -6,7 +6,7 @@ from time import perf_counter
 # Defining weights
 U_3_1 = 200
 U_3_2 = 50
-U_3_3 = 700
+U_3_3 = 750
 U_3_4 = 50
 U_3_5 = 100
 
@@ -88,7 +88,7 @@ def run_algorithm(inputs):
                         total += A[staff_i, week_i, day_i, start + i]
                     constraints.append(total <= input_max_contig[staff_i])
 
-    # 2.3 (TESTING) no timeslot should have > X number of absences
+    # 2.3 (TEMP/TESTING) no timeslot should have > X number of absences
     X_2_3 = np.sum(A, axis=0)
 
     for week_i in range(n):
@@ -102,6 +102,13 @@ def run_algorithm(inputs):
     for staff_i in range(m):
         for week_i in range(n):
             constraints.append(X_2_4[staff_i, week_i] - T <= 2)
+
+    # 2.5 (TEMP/TESTING) no one should be doing >2 hours less than their target weekly hours
+    # X_2_5 = A.sum((2, 3))
+    # T = input_target_weekly_hours[:, None].repeat(n, axis=1)
+    # for staff_i in range(m):
+    #     for week_i in range(n):
+    #         constraints.append(X_2_5[staff_i, week_i] >= 1)
 
 
     # ---------------- Soft Constraints (CP objective) ----------------
