@@ -4,7 +4,7 @@ import cvxpy as cp
 from time import perf_counter
 
 # Defining weights
-U_3_1 = 200
+U_3_1 = 400
 U_3_2 = 50
 U_3_3 = 700
 U_3_4 = 50
@@ -77,18 +77,18 @@ def run_algorithm(inputs):
                 if input_oh_demand[week_i, day_i, hour_i] != 0:
                     constraints.append(X_2_1[week_i, day_i, hour_i] >= 1)
 
-    # 2.2: Maximum Contiguous Hours
-    for staff_i in range(m):
-        for week_i in range(n):
-            for day_i in range(5):
-                window_size = (input_max_contig[staff_i] + 1)
-                for start in range(12 - window_size + 1):
-                    total = 0
-                    for i in range(window_size):
-                        total += A[staff_i, week_i, day_i, start + i]
-                    constraints.append(total <= input_max_contig[staff_i])
+    # 2.2: Maximum Contiguous Hours (TODO: OFF FOR NOW)
+    # for staff_i in range(m):
+    #     for week_i in range(n):
+    #         for day_i in range(5):
+    #             window_size = (input_max_contig[staff_i] + 1)
+    #             for start in range(12 - window_size + 1):
+    #                 total = 0
+    #                 for i in range(window_size):
+    #                     total += A[staff_i, week_i, day_i, start + i]
+    #                 constraints.append(total <= input_max_contig[staff_i])
 
-    # 2.3 (TESTING) no timeslot should have > X number of absences
+    # 2.3 (TESTING) no timeslot should have > 2 number of absences
     X_2_3 = np.sum(A, axis=0)
 
     for week_i in range(n):
@@ -96,13 +96,12 @@ def run_algorithm(inputs):
             for hour_i in range(12):
                 constraints.append(input_oh_demand[week_i, day_i, hour_i] - X_2_3[week_i, day_i, hour_i] <= 2)
 
-    # 2.4 (TEMP/TESTING) no one should be doing >3+ their target weekly hours
+    # 2.4 (TEMP/TESTING) no one should be doing >2+ their target weekly hours
     X_2_4 = A.sum((2, 3))
     T = input_target_weekly_hours[:, None].repeat(n, axis=1)
     for staff_i in range(m):
         for week_i in range(n):
-            constraints.append(X_2_4[staff_i, week_i] - T <= 2)
-
+            constraints.append(X_2_4[staff_i, week_i] - T[staff_i, week_i] <= 1)
 
     # ---------------- Soft Constraints (CP objective) ----------------
 

@@ -39,7 +39,7 @@ def send_invites(email, np_array, start_date, calendar_name, calendar_location, 
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                'local_oauth_secret.json', SCOPES)
+                'local_oauth_secret_SPA.json', SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open('token.json', 'w') as token:

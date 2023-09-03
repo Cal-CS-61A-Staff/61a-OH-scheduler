@@ -215,8 +215,11 @@ class State:
             weeks_remaining (int): the number of weeks left in the semester including the week this state is made for.
         """
 
+        self.rows_parsed = 0 # TODO: fix 9.02.2023
+
         # Update each student after last_parsed_row
-        new_form_submissions = availabilities[self.rows_parsed:]
+        # new_form_submissions = availabilities[self.rows_parsed:] #TODO: fix 9.02.2023
+        new_form_submissions = availabilities
         latest_form_submissions = utils.filter_last_row_by_email(new_form_submissions)
         for student_list in latest_form_submissions:
             # Extract email address
@@ -231,7 +234,7 @@ class State:
                 # Update the corresponding student.
                 self.course_staff_dict[email].update(student_list, weeks_remaining)
 
-            self.rows_parsed += 1
+            self.rows_parsed += 1 # TODO: not used, kept for history
     
     def set_assignments(self, assignments):
         """Sets the assignments for this week, decreases the hours left for each staff member.
