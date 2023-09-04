@@ -60,12 +60,12 @@ def main():
                         config["weeks_skipped"])
 
     # Run algorithm
-    # inputs = state.get_algo_inputs()
-    # assignments = algorithm.run_algorithm(inputs)
+    inputs = state.get_algo_inputs()
+    assignments = algorithm.run_algorithm(inputs)
 
-    # np.save('demand.npy', demand)
+    np.save('demand.npy', demand)
 
-    # state.set_assignments(assignments)
+    state.set_assignments(assignments)
 
     # Validate algorithm output TODO
 

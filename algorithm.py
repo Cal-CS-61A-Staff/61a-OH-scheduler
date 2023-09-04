@@ -4,7 +4,7 @@ import cvxpy as cp
 from time import perf_counter
 
 # Defining weights
-U_3_1 = 400
+U_3_1 = 1500
 U_3_2 = 50
 U_3_3 = 700
 U_3_4 = 50
@@ -103,6 +103,15 @@ def run_algorithm(inputs):
         for week_i in range(n):
             constraints.append(X_2_4[staff_i, week_i] - T[staff_i, week_i] <= 1)
 
+    # 2.5 (TEMP/TESTING) no assignments during times of 0 demand
+    X_2_5 = A.sum(0) 
+    for week_i in range(n):
+        for day_i in range(5):
+            for hour_i in range(12):
+                if input_oh_demand[week_i, day_i, hour_i] == 0:
+                    constraints.append(X_2_5[week_i, day_i, hour_i] == 0)
+
+
     # ---------------- Soft Constraints (CP objective) ----------------
 
     # 3.1: Minimize Maximum-Weekly-Hour
@@ -116,7 +125,7 @@ def run_algorithm(inputs):
     for staff_i in range(m):
         for week_i in range(n):
             term_3_1 += cp.maximum(X_minus_T[staff_i, week_i], 0)
-            term_3_1 += cp.maximum(T_minus_X[staff_i, week_i], 0)
+            term_3_1 += cp.maximum(T_minus_X[staff_i, week_i], 0) 
 
 
     # 3.2 (w/o QC): Minimize Total Future Hour Violations Per Staff
@@ -158,7 +167,7 @@ def run_algorithm(inputs):
         prev_weeks_weights = list(reversed(list(map(lambda_func, np.arange(1, p + 1)))))
 
         for prev_i in range(p):
-            
+
             for staff_i in range(m_day_ones):
                 for day_i in range(5):
                     for hour_i in range(12):
