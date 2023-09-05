@@ -387,6 +387,7 @@ class State:
                 if email not in prev.bi_mappings:
                     continue
                 if prev.bi_mappings[email] != self.bi_mappings[email]:
+                    print(f"Email: {email}. old id {prev.bi_mappings[email]}. new id {self.bi_mappings[email]}")
                     raise ValueError("bi_mappings do not match up between states. Stop.")
             prev = prev.prev_state
         

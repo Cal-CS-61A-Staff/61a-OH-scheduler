@@ -7,9 +7,9 @@
     "semester": "fa23",
     "weeks": 16, 
     "weekly_hour_multiplier": 2,
-    "start_date": "2023-08-27",
-    "weeks_skipped": 1,
+    "start_date": "2023-09-03",
+    "weeks_skipped": 2,
     "calendar_event_name": "CS61A OH",
-    "calendar_event_location": "Warren or Online",
+    "calendar_event_location": "Warren",
     "calendar_event_description": "Office hours."
 }

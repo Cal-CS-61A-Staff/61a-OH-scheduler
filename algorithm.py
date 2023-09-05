@@ -49,6 +49,7 @@ def run_algorithm(inputs):
     m_day_ones = m - m_non_day_ones
 
     n = input_oh_demand.shape[0]
+    n = 6 # TODO: change later
 
     try:
         p = input_previous_weeks_assignments.shape[1]
@@ -102,6 +103,14 @@ def run_algorithm(inputs):
     for staff_i in range(m):
         for week_i in range(n):
             constraints.append(X_2_4[staff_i, week_i] - T[staff_i, week_i] <= 1)
+
+    # 2.5 (TEMP/TESTING) no assignments during times of 0 demand
+    X_2_5 = A.sum(0) 
+    for week_i in range(n):
+        for day_i in range(5):
+            for hour_i in range(12):
+                if input_oh_demand[week_i, day_i, hour_i] == 0:
+                    constraints.append(X_2_5[week_i, day_i, hour_i] == 0)
 
     # ---------------- Soft Constraints (CP objective) ----------------
 

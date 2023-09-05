@@ -81,7 +81,8 @@ def send_invites(email, np_array, start_date, calendar_name, calendar_location, 
                 }
 
                 # Call the Calendar API
-                event = service.events().insert(body=event, calendarId='primary', sendUpdates='all').execute()
+                # event = service.events().insert(body=event, calendarId='primary', sendUpdates='all').execute()
+                event = service.events().insert(body=event, calendarId='c_29513f9d9244821983f2da4a88a46640eaaaa550f912075052e042263faaf474@group.calendar.google.com', sendUpdates='all').execute()
                 print(f"Email sent for {email}")
             j += 1
             
@@ -91,6 +92,6 @@ if __name__ == "__main__":
     timeslots[1][1] = 1
     timeslots[1][2] = 1
 
-    monday_date = utils.nearest_future_monday('2023-07-17')
+    monday_date = utils.nearest_future_monday('2023-09-03')
     print(timeslots)
     send_invites('kevin.x.han@berkeley.edu', timeslots, monday_date, "OH time", "warren", "damn I love this OH")
