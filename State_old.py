@@ -59,7 +59,6 @@ class StaffMember:
 
         # To be filled by the algorithm after it's done running
         self.assigned_hours = None
-        self.hours_left = self.weekly_oh_hours * weeks_left
 
         # The following aren't used, and are here for future reference
         self.appointed_position = data_row[StaffMember.APPOINTED_POSITION_INDEX]
@@ -84,12 +83,7 @@ class StaffMember:
         self.semesters_as_ai = int(data_row[StaffMember.SEMESTER_AS_AI_INDEX])
         self.preferred_contiguous_hours = int(data_row[StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX])
 
-        new_hours = int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX])
-        if new_hours != self.weekly_oh_hours:
-            # If the weekly OH hours have changed, update the hours left
-            self.hours_left = new_hours * weeks_left
-            if self.oh_hours_adjustments:
-                self.hours_left += self.oh_hours_adjustments
+        self.weekly_oh_hours = int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX])
 
         # Reshape availabilities list
         availabilities_list = [data_row[i] for i in StaffMember.AVAILABILITIES_INDICES]
@@ -105,22 +99,7 @@ class StaffMember:
         Args:
             assignment (np.array): 5x12 np array representing this staff's assignment for the week.
         """
-        if self.assigned_hours:
-            raise Exception("Assigned hours already set.")
         self.assigned_hours = assignment
-        self.hours_left -= np.sum(assignment)
-    
-    def adjust_oh_hours(self, adjustment):
-        """
-        Adjusts the weekly OH hours for this staff member by the given amount.
-
-        Args:
-            adjustment (int): hours to add/decrease
-        """
-        if not hasattr(self, "oh_hours_adjustments"):
-            self.oh_hours_adjustments = 0
-        self.oh_hours_adjustments += adjustment
-        self.hours_left += adjustment
 
     def calculate_availabilities_difference(self, other_availability):
         """
@@ -158,7 +137,7 @@ class StaffMember:
 
         return info
         
-
+    
 class State:
     """
     An internal state object for storing relevant information between runs. 
@@ -304,13 +283,7 @@ class State:
         
         return np.swapaxes(results, 0, 1)
 
-    def get_course_staff(self, email):
-        """
-        Returns:
-            StaffMember: StaffMember object corresponding to the given email
-        """
-        return self.course_staff_dict[email]
-        
+    
     def get_algo_inputs(self):
         """
         Returns:
@@ -360,7 +333,6 @@ class State:
         # hours left = new_weekly_target * total weeks - prev assignments
 
         # get total weeks from first state
-        # get total weeks from first state
         current = self
         while current.prev_state:
             current = current.prev_state
@@ -369,8 +341,16 @@ class State:
         target_total_future_hours = np.array([None] * len(self.course_staff_dict))
         for email in self.course_staff_dict:
             index = self.bi_mappings[email]
-            target_total_future_hours[index] = self.course_staff_dict[email].hours_left
+            target_total_future_hours[index] = self.course_staff_dict[email].weekly_oh_hours * total_weeks
         
+        prev = self.prev_state
+        while prev:
+            for email in prev.course_staff_dict:
+                index = prev.bi_mappings[email]
+                target_total_future_hours[index] -= np.sum(prev.course_staff_dict[email].assigned_hours)
+            prev = prev.prev_state
+
+
         if self.prev_state:
             changed_hours_weightings = np.array([None] * self.day_ones)
             for i in range(self.day_ones):

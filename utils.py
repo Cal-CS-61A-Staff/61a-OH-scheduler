@@ -267,9 +267,13 @@ def deserialize(project_id, bucket_name, week_num, weeks_skipped, prefix=None):
     blobs = bucket.list_blobs(prefix=prefix, delimiter="/")  # List all blobs with the given prefix
 
     for blob in blobs:
+        print(blob.name)
         if blob.name.endswith('.pkl'):
             no_prefix_blob_name = os.path.basename(blob.name)
-            current_week_num = int(no_prefix_blob_name.split('.')[0])
+            name = no_prefix_blob_name.split('.')[0]
+            if (not name.isdigit()):
+                continue
+            current_week_num = int(name)
             pickled_data = blob.download_as_bytes()
             data = pickle.loads(pickled_data)
             deserialized_objects[current_week_num - weeks_skipped - 1] = data
