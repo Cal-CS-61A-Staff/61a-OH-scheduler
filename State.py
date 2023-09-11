@@ -88,7 +88,7 @@ class StaffMember:
         if new_hours != self.weekly_oh_hours:
             # If the weekly OH hours have changed, update the hours left
             self.hours_left = new_hours * weeks_left
-            if self.oh_hours_adjustments:
+            if hasattr(self, "oh_hours_adjustments"):
                 self.hours_left += self.oh_hours_adjustments
 
         # Reshape availabilities list
@@ -105,8 +105,8 @@ class StaffMember:
         Args:
             assignment (np.array): 5x12 np array representing this staff's assignment for the week.
         """
-        if self.assigned_hours:
-            raise Exception("Assigned hours already set.")
+        # if not self.assigned_hours is None:
+        #     raise Exception("Assigned hours already set.")
         self.assigned_hours = assignment
         self.hours_left -= np.sum(assignment)
     

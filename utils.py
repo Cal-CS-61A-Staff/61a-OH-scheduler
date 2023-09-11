@@ -264,7 +264,7 @@ def deserialize(project_id, bucket_name, week_num, weeks_skipped, prefix=None):
     bucket = client.bucket(bucket_name)
 
     target_filename = '{}/{}.pkl'.format(prefix, week_num)
-    blobs = bucket.list_blobs(prefix=prefix, delimiter="/")  # List all blobs with the given prefix
+    blobs = bucket.list_blobs(prefix=prefix)  # List all blobs with the given prefix
 
     for blob in blobs:
         print(blob.name)

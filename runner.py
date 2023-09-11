@@ -35,7 +35,7 @@ def main():
     demand = utils.get_demand(demand_id, DEMAND_RANGE, config["weeks"])
 
     # Get last state
-    prefix = f"{config['class']}-{config['semester']}"
+    prefix = f"{config['class']}-{config['semester']}/"
     latest_week = utils.get_latest_week(config["project_id"], config["bucket_name"], prefix)
     if latest_week > -1:
         last_state = utils.deserialize(config.get("project_id"), config["bucket_name"], latest_week, config["weeks_skipped"], prefix)
@@ -58,7 +58,7 @@ def main():
                         config["weeks"], 
                         config["weekly_hour_multiplier"], 
                         config["weeks_skipped"])
-
+        
     # Run algorithm
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
@@ -70,20 +70,20 @@ def main():
     # Validate algorithm output TODO
 
     # Email send
-    # mappings = state.bi_mappings
-    # first_monday = utils.nearest_future_monday(config["start_date"])
-    # starting_monday = first_monday + timedelta((state.week_num - config["weeks_skipped"] - 1)* 7)
+    mappings = state.bi_mappings
+    first_monday = utils.nearest_future_monday(config["start_date"])
+    starting_monday = first_monday + timedelta((state.week_num - config["weeks_skipped"] - 1)* 7)
     
-    # for i in range(assignments.shape[0]):
-    #     email = mappings.inverse[i]
-    #     send_email.send_invites(email, 
-    #                           assignments[i], 
-    #                           starting_monday, 
-    #                           config["calendar_event_name"], 
-    #                           config["calendar_event_location"], 
-    #                           config["calendar_event_description"])
+    for i in range(assignments.shape[0]):
+        email = mappings.inverse[i]
+        send_email.send_invites(email, 
+                              assignments[i], 
+                              starting_monday, 
+                              config["calendar_event_name"], 
+                              config["calendar_event_location"], 
+                              config["calendar_event_description"])
     
-    # state.serialize(config["project_id"], config["bucket_name"], prefix)    
+    state.serialize(config["project_id"], config["bucket_name"], prefix)    
 
 
 if __name__ == '__main__':
