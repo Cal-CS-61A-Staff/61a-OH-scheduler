@@ -111,6 +111,12 @@ def run_algorithm(inputs):
                 if input_oh_demand[week_i, day_i, hour_i] == 0:
                     constraints.append(X_2_5[week_i, day_i, hour_i] == 0)
 
+    # 2.6 (TEMP/TESTING) no time slot should have more supply than demand (??? should this even be a constraint? IDK)
+    X_2_6 = A.sum(0)
+    for week_i in range(n):
+        for day_i in range(5):
+            for hour_i in range(12):
+                constraints.append(X_2_5[week_i, day_i, hour_i] <= input_oh_demand[week_i, day_i, hour_i])
 
     # ---------------- Soft Constraints (CP objective) ----------------
 
