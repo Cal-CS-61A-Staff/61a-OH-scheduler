@@ -142,6 +142,9 @@ class StaffMember:
         this_converted = np.where(self.availabilities == 5, 0, 1)
         other_converted = np.where(other_availability == 5, 0, 1)
 
+        if other_converted.sum() == 0:
+            return 1
+
         return np.sum(np.maximum(other_converted - this_converted, 0))/np.sum(other_converted)
 
     def __str__(self) -> str:

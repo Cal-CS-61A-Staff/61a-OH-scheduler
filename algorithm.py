@@ -50,6 +50,7 @@ def run_algorithm(inputs):
 
     n = input_oh_demand.shape[0]
     n = 6 # TODO: change later
+    #n = 1 # TODO: change later 
 
     try:
         p = input_previous_weeks_assignments.shape[1]
@@ -145,6 +146,7 @@ def run_algorithm(inputs):
                 term_3_3 += cp.maximum(X[week_i, day_i, hour_i] - input_oh_demand[week_i, day_i, hour_i], 0)
 
 
+
     # 3.4: Scheduling Assignment Displeasure
 
     staff_availabilities_extended = input_staff_availabilities[:, None, :, :].repeat(n, axis=1)
@@ -169,6 +171,10 @@ def run_algorithm(inputs):
         for prev_i in range(p):
             
             for staff_i in range(m_day_ones):
+                # if a staff member doesn't work for a week, then skip them for that week
+                if input_previous_weeks_assignments[staff_i, prev_i].sum() == 0:
+                    continue
+
                 for day_i in range(5):
                     for hour_i in range(12):
                         term_3_5 += cp.maximum(input_previous_weeks_assignments[staff_i, prev_i, day_i, hour_i] - \
