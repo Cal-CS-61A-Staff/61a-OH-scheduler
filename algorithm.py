@@ -50,7 +50,7 @@ def run_algorithm(inputs):
 
     n = input_oh_demand.shape[0]
     n = 6 # TODO: change later
-    #n = 1 # TODO: change later 
+    n = 4 # TODO: change later 
 
     try:
         p = input_previous_weeks_assignments.shape[1]

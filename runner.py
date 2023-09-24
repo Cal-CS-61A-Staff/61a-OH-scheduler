@@ -58,7 +58,7 @@ def main():
                         config["weeks"], 
                         config["weekly_hour_multiplier"], 
                         config["weeks_skipped"])
-        
+    
     # Run algorithm
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
