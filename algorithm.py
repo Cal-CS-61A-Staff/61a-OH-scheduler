@@ -6,7 +6,7 @@ from time import perf_counter
 # Defining weights
 U_3_1 = 1500
 U_3_2 = 50
-U_3_3 = 700
+U_3_3 = 9999 # 700
 U_3_4 = 50
 U_3_5 = 100
 
@@ -96,12 +96,12 @@ def run_algorithm(inputs):
             for hour_i in range(12):
                 constraints.append(input_oh_demand[week_i, day_i, hour_i] - X_2_3[week_i, day_i, hour_i] <= 2)
 
-    # 2.4 (TEMP/TESTING) no one should be doing >2+ their target weekly hours
+    # 2.4 (TEMP/TESTING) no one should be doing >3+ their target weekly hours
     X_2_4 = A.sum((2, 3))
     T = input_target_weekly_hours[:, None].repeat(n, axis=1)
     for staff_i in range(m):
         for week_i in range(n):
-            constraints.append(X_2_4[staff_i, week_i] - T[staff_i, week_i] <= 1)
+            constraints.append(X_2_4[staff_i, week_i] - T[staff_i, week_i] <= 2)
 
     # 2.5 (TEMP/TESTING) no assignments during times of 0 demand
     X_2_5 = A.sum(0) 
@@ -112,7 +112,6 @@ def run_algorithm(inputs):
                     constraints.append(X_2_5[week_i, day_i, hour_i] == 0)
 
     # 2.6 (TEMP/TESTING) no time slot should have more supply than demand (??? should this even be a constraint? IDK)
-    X_2_6 = A.sum(0)
     for week_i in range(n):
         for day_i in range(5):
             for hour_i in range(12):
@@ -210,5 +209,6 @@ def run_algorithm(inputs):
     all_assignments = var_to_np(A)
 
     np.save("assignments.npy", all_assignments)
+    np.save("availabiltiies.npy", input_staff_availabilities)
 
     return all_assignments[:, 0, :, :]
