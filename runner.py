@@ -62,6 +62,7 @@ def main():
     # Run algorithm
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
+    # assignments = np.load("assignments.npy")[:, 0, :, :]
 
     np.save('demand.npy', demand)
 
