@@ -6,7 +6,7 @@ from time import perf_counter
 # Defining weights
 U_3_1 = 1500
 U_3_2 = 50
-U_3_3 = 9999 # 700
+U_3_3 = 12000 # 700
 U_3_4 = 50
 U_3_5 = 100
 
