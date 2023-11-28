@@ -49,11 +49,12 @@ def run_algorithm(inputs):
     m_day_ones = m - m_non_day_ones
 
     n = input_oh_demand.shape[0]
-    n = 6 # TODO: change later
-    n = 4 # TODO: change later 
+    # n = 6 # TODO: change later
+    # n = 4 # TODO: change later 
 
     try:
         p = input_previous_weeks_assignments.shape[1]
+        p = 4 # TODO: change later, but we probably don't want to perform look-behind for all prev weeks, fixed look behind sliding window keeps computational complexity down with minimal resulting tradeoff
     except IndexError as e:
         p = None
         print("No previous weeks. Removing past consistency constraint.")
