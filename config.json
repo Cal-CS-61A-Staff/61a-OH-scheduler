@@ -1,15 +1,15 @@
 {
-    "demand_link": "https://docs.google.com/spreadsheets/d/16izOeWuDTpzqoGts73XeP9CJyFSEAj48pTOBwzzA0iY/edit?usp=sharing",
-    "availabilities_link": "https://docs.google.com/spreadsheets/d/1JeWtj99OSJMz2DUb_VZgXvehyGzxnCP1XD7783lqPnA/edit?usp=sharing",
+    "demand_link": "https://docs.google.com/spreadsheets/d/1aGmtazkjVuL_S6MT5vVMOlovdeg_3QZOo_dQLlECDH4/edit?usp=sharing",
+    "availabilities_link": "https://docs.google.com/spreadsheets/d/1CVeuSQ6DhaKBcPj6r1c1rvaQj_ppPG_hw4G571yKV9Y/edit?usp=sharing",
     "project_id": "cs61a-140900",
     "bucket_name": "oh-scheduler",
     "class": "61a",
-    "semester": "fa23",
-    "weeks": 16, 
+    "semester": "sp24",
+    "weeks": 15, 
     "weekly_hour_multiplier": 2,
-    "start_date": "2023-09-03",
-    "weeks_skipped": 2,
+    "start_date": "2024-01-21",
+    "weeks_skipped": 1,
     "calendar_event_name": "CS61A OH",
-    "calendar_event_location": "Warren",
-    "calendar_event_description": "Office hours."
+    "calendar_event_location": "Warren OR Online (Check 61a public calendar)",
+    "calendar_event_description": "Office hours"
 }

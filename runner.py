@@ -86,6 +86,5 @@ def main():
     
     # state.serialize(config["project_id"], config["bucket_name"], prefix)    
 
-
 if __name__ == '__main__':
     main()

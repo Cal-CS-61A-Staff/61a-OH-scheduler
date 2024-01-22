@@ -49,8 +49,7 @@ def run_algorithm(inputs):
     m_day_ones = m - m_non_day_ones
 
     n = input_oh_demand.shape[0]
-    # n = 6 # TODO: change later
-    # n = 4 # TODO: change later 
+    n = 10 # TODO: change later
 
     try:
         p = input_previous_weeks_assignments.shape[1]
