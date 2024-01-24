@@ -12,6 +12,7 @@ from google.cloud import storage
 from google.api_core.exceptions import Forbidden, NotFound
 import validation
 import algorithm
+import pandas as pd
 
 # The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
 AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
@@ -67,6 +68,17 @@ def main():
     np.save('demand.npy', demand)
 
     state.set_assignments(assignments)
+
+    # Create CSV export of the next week's assignments
+    export_dict = {"email": [], "hours_assigned": []}
+    for i in range(assignments.shape[0]):
+        if assignments[i].sum() != 0:
+
+            export_dict['email'].append(state.bi_mappings.inverse[i])
+            export_dict['hours_assigned'].append(assignments[i].sum())
+
+    export_df = pd.DataFrame(data=export_dict)
+    export_df.to_csv("hours_assigned.csv", index=False)
 
     # Validate algorithm output TODO
 

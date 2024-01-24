@@ -11,3 +11,4 @@ new_assignments.npy
 demand.npy
 local_oauth_secret_SPA.json
 query_private.ipynb
+hours_assigned.csv
