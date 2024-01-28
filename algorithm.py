@@ -52,8 +52,7 @@ def run_algorithm(inputs):
     n = 10 # TODO: change later
 
     try:
-        p = input_previous_weeks_assignments.shape[1]
-        p = 4 # TODO: change later, but we probably don't want to perform look-behind for all prev weeks, fixed look behind sliding window keeps computational complexity down with minimal resulting tradeoff
+        p = input_previous_weeks_assignments.shape[1] # TODO: change later, but we probably don't want to perform look-behind for all prev weeks, fixed look behind sliding window keeps computational complexity down with minimal resulting tradeoff
     except IndexError as e:
         p = None
         print("No previous weeks. Removing past consistency constraint.")
@@ -101,6 +100,7 @@ def run_algorithm(inputs):
     # 2.4 (TEMP/TESTING) no one should be doing >2+ their target weekly hours
     X_2_4 = A.sum((2, 3))
     T = input_target_weekly_hours[:, None].repeat(n, axis=1)
+
     for staff_i in range(m):
         for week_i in range(n):
             constraints.append(X_2_4[staff_i, week_i] - T[staff_i, week_i] <= 1)
@@ -160,7 +160,6 @@ def run_algorithm(inputs):
 
     # 3.5: Consistent Weekly Hours (w/o MIQP)
     current_week = A[:, 0, :, :] # shape: (# of staff, 5, 12)
-
 
     # Assuming input_previous_weeks_assignments[0] is the first week the OH scheduler ran
     term_3_5 = 0

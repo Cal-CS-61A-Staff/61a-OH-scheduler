@@ -86,6 +86,7 @@ class StaffMember:
 
         new_hours = int(data_row[StaffMember.WEEKLY_OH_HOURS_INDEX])
         if new_hours != self.weekly_oh_hours:
+            self.weekly_oh_hours = new_hours 
             # If the weekly OH hours have changed, update the hours left
             self.hours_left = new_hours * weeks_left
             if hasattr(self, "oh_hours_adjustments"):
