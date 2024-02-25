@@ -49,8 +49,7 @@ def run_algorithm(inputs):
     m_day_ones = m - m_non_day_ones
 
     n = input_oh_demand.shape[0]
-    n = 10 # TODO: change later
-
+    
     try:
         p = input_previous_weeks_assignments.shape[1] # TODO: change later, but we probably don't want to perform look-behind for all prev weeks, fixed look behind sliding window keeps computational complexity down with minimal resulting tradeoff
     except IndexError as e:
@@ -89,13 +88,13 @@ def run_algorithm(inputs):
     #                     total += A[staff_i, week_i, day_i, start + i]
     #                 constraints.append(total <= input_max_contig[staff_i])
 
-    # 2.3 (TESTING) no timeslot should have > 2 number of absences
+    # 2.3 (TESTING) no timeslot should have > 3 number of absences
     X_2_3 = np.sum(A, axis=0)
 
     for week_i in range(n):
         for day_i in range(5):
             for hour_i in range(12):
-                constraints.append(input_oh_demand[week_i, day_i, hour_i] - X_2_3[week_i, day_i, hour_i] <= 2)
+                constraints.append(input_oh_demand[week_i, day_i, hour_i] - X_2_3[week_i, day_i, hour_i] <= 3)
 
     # 2.4 (TEMP/TESTING) no one should be doing >2+ their target weekly hours
     X_2_4 = A.sum((2, 3))
@@ -112,6 +111,10 @@ def run_algorithm(inputs):
             for hour_i in range(12):
                 if input_oh_demand[week_i, day_i, hour_i] == 0:
                     constraints.append(X_2_5[week_i, day_i, hour_i] == 0)
+
+
+    # 2.6 (TEMP/TESTING) ensure no one gets assigned to a slot they are unavailable for TODO
+    
 
     # ---------------- Soft Constraints (CP objective) ----------------
 
