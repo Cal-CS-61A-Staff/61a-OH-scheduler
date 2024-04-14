@@ -96,7 +96,7 @@ def run_algorithm(inputs):
             for hour_i in range(12):
                 constraints.append(input_oh_demand[week_i, day_i, hour_i] - X_2_3[week_i, day_i, hour_i] <= 3)
 
-    # 2.4 (TEMP/TESTING) no one should be doing >2+ their target weekly hours
+    # 2.4 (TEMP/TESTING) no one should be doing >3+ their target weekly hours
     X_2_4 = A.sum((2, 3))
     T = input_target_weekly_hours[:, None].repeat(n, axis=1)
 
