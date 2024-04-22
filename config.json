@@ -5,7 +5,7 @@
     "bucket_name": "oh-scheduler",
     "class": "61a",
     "semester": "sp24",
-    "weeks": 15, 
+    "weeks": 16, 
     "weekly_hour_multiplier": 2,
     "start_date": "2024-01-21",
     "weeks_skipped": 1,
