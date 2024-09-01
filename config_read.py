@@ -29,7 +29,7 @@ def read_config(config):
     """
     f = open(config)
     data = json.load(f)
-    print(data)
+    #print(data)
     f.close()
 
     if "weekly_hour_multiplier" not in data:

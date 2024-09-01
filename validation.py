@@ -26,15 +26,20 @@ DEMAND_RANGE = 'Demand!A2:E'
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
-def main():
+def test():
+    
     config = config_read.read_config("config.json")
     validate_config(config)
     # Get availabilities data
     availabilities_id = config_read.get_google_sheets_id(config["availabilities_link"])
     availabilities = utils.get_availabilities(availabilities_id, AVAILABILITIES_RANGE)
     validate_availabilities(availabilities)
+    print(availabilities)
     validate_id = config_read.get_google_sheets_id(config["demand_link"])
     demand = utils.get_demand(validate_id, DEMAND_RANGE, config["weeks"])
+    print(demand)
+    print("Validation passed!")
+    # validation test!
 
 
 def validate_config(config):
@@ -88,9 +93,9 @@ def validate_availabilities(sheet):
     Returns:
         None
     """
-    print(sheet)
+    #print(sheet)
     for row in sheet:
-        print(f'row: {row}')
+        #print(f'row: {row}')
         email = row[State.StaffMember.EMAIL_ADDRESS_INDEX]
 
         # Check if email is valid
@@ -119,5 +124,5 @@ def validate_availabilities(sheet):
         if (5 * 12 - num_not_available) < target_weekly_hours:
             raise ValueError(f"Email {email} has less than {target_weekly_hours} available hours")
 
-if __name__ == main():
-    main()
+# if __name__ == main():
+#     main()

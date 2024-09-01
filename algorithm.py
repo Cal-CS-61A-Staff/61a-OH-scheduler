@@ -52,9 +52,10 @@ def run_algorithm(inputs):
     
     try:
         p = input_previous_weeks_assignments.shape[1] # TODO: change later, but we probably don't want to perform look-behind for all prev weeks, fixed look behind sliding window keeps computational complexity down with minimal resulting tradeoff
+        print("Using previous week's assignments as input for consistency constraint.")
     except IndexError as e:
         p = None
-        print("No previous weeks. Removing past consistency constraint.")
+        print("Data for previous week not found. Removing past consistency constraint.")
 
     print("Setting up algorithm...")
     # Define the decision variable
@@ -125,14 +126,12 @@ def run_algorithm(inputs):
     T_minus_X = T - X
 
     # Apply maximum on each variable with 0
-    # term_3_1 = 0
-    # for staff_i in range(m):
-    #     for week_i in range(n):
-    #         term_3_1 += cp.maximum(X_minus_T[staff_i, week_i], 0)
-    #         term_3_1 += cp.maximum(T_minus_X[staff_i, week_i], 0)
-    # vectorized version:
-    term_3_1 = cp.sum(cp.pos(X_minus_T)) + cp.sum(cp.pos(T_minus_X))
-
+    term_3_1 = 0
+    for staff_i in range(m):
+        for week_i in range(n):
+            term_3_1 += cp.maximum(X_minus_T[staff_i, week_i], 0)
+            term_3_1 += cp.maximum(T_minus_X[staff_i, week_i], 0)
+    
 
 
     # 3.2 (w/o QC): Minimize Total Future Hour Violations Per Staff
@@ -145,13 +144,11 @@ def run_algorithm(inputs):
     X = A.sum(0)
 
     term_3_3 = 0
-    # for week_i in range(n):
-    #     for day_i in range(5):
-    #         for hour_i in range(12):
-    #             term_3_3 += cp.maximum(input_oh_demand[week_i, day_i, hour_i] - X[week_i, day_i, hour_i], 0)
-    #             term_3_3 += cp.maximum(X[week_i, day_i, hour_i] - input_oh_demand[week_i, day_i, hour_i], 0)
-    # vectorized version, a la chatgpt4o:
-    term_3_3 = cp.sum(cp.abs(input_oh_demand - X))
+    for week_i in range(n):
+        for day_i in range(5):
+            for hour_i in range(12):
+                term_3_3 += cp.maximum(input_oh_demand[week_i, day_i, hour_i] - X[week_i, day_i, hour_i], 0)
+                term_3_3 += cp.maximum(X[week_i, day_i, hour_i] - input_oh_demand[week_i, day_i, hour_i], 0)
 
 
 
@@ -210,6 +207,7 @@ def run_algorithm(inputs):
     print("Running algorithm...")
     start = perf_counter()
     prob = Problem(obj, constraints)
+    print("...solving...")
     prob.solve(verbose=False)
     print(f"Algorithm status: {prob.status}. Objective value: {prob.value}")
     print(f"Time elapsed: {perf_counter() - start}")

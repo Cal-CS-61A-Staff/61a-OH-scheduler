@@ -1,6 +1,8 @@
 {
     "demand_link": "https://docs.google.com/spreadsheets/d/16jMg3NZ5gufIpFDKL3_a1t2cnykYuqOadqdjFRNpxxs/edit?usp=sharing",
     "availabilities_link": "https://docs.google.com/spreadsheets/d/1iRhAfiNYj7zoaOEGzJnmaw0wurDDPFDKYejOsRMJ0eQ/edit?usp=sharing",
+    "AVAILABILITIES_RANGE": "Form Responses 1!B1:BQ",
+    "DEMAND_RANGE": "Demand!A2:E",
     "project_id": "cs-61a-website",
     "bucket_name": "oh-scheduler",
     "class": "61a",

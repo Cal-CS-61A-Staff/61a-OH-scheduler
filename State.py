@@ -423,9 +423,9 @@ class State:
                     raise ValueError("bi_mappings do not match up between states. Stop.")
             prev = prev.prev_state
         
-    def serialize(self, folder_path='pickles', file_name=None):
+    def serialize(self, folder_path='outputs/pickles', file_name=None):
         """
-        Saves this object using pickle to a LOCAL folder.
+        Saves this object using pickle to a LOCAL folder called pickles.
 
         Args:
             folder_path (str): Path to the folder where the pickle file should be saved.

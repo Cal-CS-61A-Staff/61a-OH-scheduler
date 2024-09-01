@@ -4,13 +4,13 @@ import re
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import collections
+#import collections
 import numpy as np
 import pickle
 from bidict import bidict
 from datetime import datetime, timedelta
 import State
-import io
+#import io
 #from google.cloud import storage
 import config_read
 
@@ -31,9 +31,13 @@ def get_sheet_values(spread_sheet_id, range):
     """
 
     # Creating credentials
-    creds = service_account.Credentials.from_service_account_file(
-        "credentials.json", scopes=SCOPES
-    )
+    try:
+        creds = service_account.Credentials.from_service_account_file(
+            "credentials.json", scopes=SCOPES
+        )
+    except FileNotFoundError:
+        print("Error: credentials.json not found. \nFollow instructions in README.md to get your credentials.json key!!")
+        exit(1)  
 
     service = build('sheets', 'v4', credentials = creds)
 
@@ -61,7 +65,7 @@ def get_demand(sheet_id, range, total_weeks):
         np_array: OH demand. Shape: (total_weeks, days, times)
     """
     values = get_sheet_values(sheet_id, range)
-    print(values)
+    #print(values)
     if values == [[]]:
         raise Exception('No OH demand information found.')
     
