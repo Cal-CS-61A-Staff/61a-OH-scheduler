@@ -28,10 +28,6 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
 
 def test():
-<<<<<<< HEAD
-=======
-
->>>>>>> 05a62e4 (ugh)
     config = config_read.read_config("config.json")
     validate_config(config)
     # Get availabilities data

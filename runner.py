@@ -4,14 +4,11 @@ import utils
 import State
 import os, sys
 import numpy as np
-<<<<<<< HEAD
+
 import shutil
 from datetime import timedelta
 import re
-=======
-# from datetime import timedelta
-# #from google.cloud import storage
->>>>>>> 05a62e4 (ugh)
+
 
 from google.api_core.exceptions import Forbidden, NotFound
 import validation
@@ -19,10 +16,6 @@ import algorithm
 import pandas as pd
 
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 05a62e4 (ugh)
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "key.json"
 
 # Function to get user approval for the google sheets links
