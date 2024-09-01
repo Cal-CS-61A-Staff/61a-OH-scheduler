@@ -232,46 +232,6 @@ def doubly_mapped_dictionary(input_dict):
 
     return output_dict
 
-def deserialize(project_id, bucket_name, week_num, weeks_skipped, prefix=None):
-    """
-    Deserializes objects from the specified folder for the given week. 
-    Also deserializes objects form previous weeks so that prev_state is populated.
-
-    Args:
-        folder (str): Path to the folder containing the serialized objects.
-        week_num (int): Week number to start deserialization from.
-
-    Returns:
-        state: The deserialized state object for week_num.
-    """
-    # Check each file and only deserialize all states below or equal to week_num
-    deserialized_objects = [None] * (week_num - weeks_skipped)
-
-    client = storage.Client(project=project_id)
-    bucket = client.bucket(bucket_name)
-
-    target_filename = '{}/{}.pkl'.format(prefix, week_num)
-    blobs = bucket.list_blobs(prefix=prefix)  # List all blobs with the given prefix
-
-    for blob in blobs:
-        print(blob.name)
-        if blob.name.endswith('.pkl'):
-            no_prefix_blob_name = os.path.basename(blob.name)
-            name = no_prefix_blob_name.split('.')[0]
-            if (not name.isdigit()):
-                continue
-            current_week_num = int(name)
-            pickled_data = blob.download_as_bytes()
-            data = pickle.loads(pickled_data)
-            deserialized_objects[current_week_num - weeks_skipped - 1] = data
-    
-    # Link states
-    for i in range(len(deserialized_objects) - 1):
-        deserialized_objects[i+1].prev_state = deserialized_objects[i]
-    
-    # Return the state object for the current week
-    return deserialized_objects[-1]
-
 def get_latest_week(project_id, bucket_name, prefix=None):
     """Returns the largest week number from the filenames in the google bucket.
 
@@ -414,3 +374,84 @@ if __name__ == '__main__':
         last_state = None
     
     last_state.print_algo_outputs()
+
+def deserialize(week_num, weeks_skipped=1, folder_path='outputs/pickles'):
+    """
+    Deserializes objects from the specified local folder. 
+    Also deserializes objects from previous weeks so that prev_state is populated.
+
+    Args:
+        folder_path (str): Path to the folder containing the serialized objects.
+        week_num (int): Week number to start deserialization from.
+        weeks_skipped (int): Number of weeks to skip when deserializing.
+
+    Returns:
+        state: The deserialized state object for week_num.
+    """
+    # Check each file and only deserialize all states up to and including week_num
+    deserialized_objects = [None] * (week_num - weeks_skipped)
+
+    # Iterate through the folder and load each pickle file
+    for file_name in sorted(os.listdir(folder_path)):
+        if file_name.endswith('.pkl'):
+            name = os.path.splitext(file_name)[0]
+            if not name.isdigit():
+                continue
+            
+            current_week_num = int(name)
+            if weeks_skipped < current_week_num <= week_num:
+                file_path = os.path.join(folder_path, file_name)
+                with open(file_path, 'rb') as file:
+                    data = pickle.load(file)
+                deserialized_objects[current_week_num - weeks_skipped - 1] = data
+
+    # Link states
+    for i in range(len(deserialized_objects) - 1):
+        if deserialized_objects[i+1] is not None:
+            deserialized_objects[i+1].prev_state = deserialized_objects[i]
+
+    # Return the state object for the current week
+    return deserialized_objects[-1]
+
+
+# -------- deprecated ------- #
+def remote_deserialize(project_id, bucket_name, week_num, weeks_skipped, prefix=None):
+    """
+    deprecated because shm didn't want to set up google cloud storage
+    Deserializes objects from the specified Google Cloud Storage folder
+    Also deserializes objects form previous weeks so that prev_state is populated.
+
+    Args:
+        folder (str): Path to the folder containing the serialized objects.
+        week_num (int): Week number to start deserialization from.
+
+    Returns:
+        state: The deserialized state object for week_num.
+    """
+    # Check each file and only deserialize all states below or equal to week_num
+    deserialized_objects = [None] * (week_num - weeks_skipped)
+
+    client = storage.Client(project=project_id)
+    bucket = client.bucket(bucket_name)
+
+    target_filename = '{}/{}.pkl'.format(prefix, week_num)
+    blobs = bucket.list_blobs(prefix=prefix)  # List all blobs with the given prefix
+
+    for blob in blobs:
+        print(blob.name)
+        if blob.name.endswith('.pkl'):
+            no_prefix_blob_name = os.path.basename(blob.name)
+            name = no_prefix_blob_name.split('.')[0]
+            if (not name.isdigit()):
+                continue
+            current_week_num = int(name)
+            pickled_data = blob.download_as_bytes()
+            data = pickle.loads(pickled_data)
+            deserialized_objects[current_week_num - weeks_skipped - 1] = data
+    
+    # Link states
+    for i in range(len(deserialized_objects) - 1):
+        deserialized_objects[i+1].prev_state = deserialized_objects[i]
+    
+    # Return the state object for the current week
+    return deserialized_objects[-1]

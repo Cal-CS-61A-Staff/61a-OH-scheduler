@@ -18,12 +18,24 @@ import pandas as pd
 AVAILABILITIES_RANGE = 'Form Responses 1!B1:BQ'
 DEMAND_RANGE = 'Demand!A2:E'
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+
+# Function to get user approval for a link
+def get_user_approval(label, link):
+    while True:
+        print(f"{label} found: {link}")
+        approval = input("Is this correct? (y/n): ").strip().lower()
+        if approval == 'y':
+            return link
+        elif approval == 'n':
+            return input(f"Please enter the correct {label.lower()}: ").strip()
+        else:
+            print("Invalid input, please enter 'y' or 'n'.")
 
 
 def main():
     # Config Read
-    config = config_read.read_config("key.json")
+    config = config_read.read_config("config.json")
     validation.validate_config(config)
 
     # Get availabilities data
@@ -37,18 +49,18 @@ def main():
 
     # Get last state
     prefix = f"{config['class']}-{config['semester']}/"
-    latest_week = utils.get_latest_week(config["project_id"], config["bucket_name"], prefix)
-    if latest_week > -1:
-        last_state = utils.deserialize(config.get("project_id"), config["bucket_name"], latest_week, config["weeks_skipped"], prefix)
-    else:
-        last_state = None
+    # latest_week = utils.get_latest_week(config["project_id"], config["bucket_name"], prefix)
+    # if latest_week > -1:
+    #     last_state = utils.deserialize(config.get("project_id"), config["bucket_name"], latest_week, config["weeks_skipped"], prefix)
+    # else:
+    #     last_state = None
+    last_state = None
     
-    if last_state and last_state.week_num == config["weeks"]:
-        print(f"ERROR: The algorithm has already been run for all weeks. The last state was for week {config['weeks']}. Exiting.")
-        return
-
-    if latest_week == config['weeks']:
-        raise RuntimeError("Allotted # of weeks have already passed. Exiting.")
+    # if last_state and last_state.week_num == config["weeks"]:
+    #     print(f"ERROR: The algorithm has already been run for all weeks. The last state was for week {config['weeks']}. Exiting.")
+    #     return
+    # if latest_week == config['weeks']:
+    #     raise RuntimeError("Allotted # of weeks have already passed. Exiting.")
 
     # Create new state object
     state = State.State(last_state, 
@@ -63,7 +75,7 @@ def main():
     # Run algorithm
     inputs = state.get_algo_inputs()
     assignments = algorithm.run_algorithm(inputs)
-    # assignments = np.load("assignments.npy")[:, 0, :, :]
+    # \assignments = np.load("assignments.npy")[:, 0, :, :]
 
     np.save('demand.npy', demand)
 
@@ -80,6 +92,32 @@ def main():
 
     export_df = pd.DataFrame(data=export_dict)
     export_df.to_csv("hours_assigned.csv", index=False)
+    
+
+
+
+    # Create a dictionary to store the data for the detailed CSV
+    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    hours_of_day = [f"{hour}:00" for hour in range(9, 21)]  # 9 AM to 9 PM
+    export_dict_weekly = {day: [""] * 12 for day in days_of_week}  # Initialize dictionary for each day
+
+    # Iterate over the days of the week
+    for day_index in range(assignments.shape[1]):
+        # Iterate over the hours of the day
+        for hour_index in range(assignments.shape[2]):
+            assigned_staff = []
+            # Iterate over each staff member to find those assigned to this time slot
+            for staff_index in range(assignments.shape[0]):
+                if assignments[staff_index, day_index, hour_index] == 1:  # If the staff member is assigned
+                    staff_email = state.bi_mappings.inverse[staff_index]  # Get staff email from mapping
+                    assigned_staff.append(staff_email)  # Add email to the list for this time slot
+
+            # Join the emails into a single string, separated by commas
+            export_dict_weekly[days_of_week[day_index]][hour_index] = ", ".join(assigned_staff)
+
+    # Create a DataFrame from the dictionary and export it as a CSV
+    export_df_weekly = pd.DataFrame(data=export_dict_weekly, index=hours_of_day)
+    export_df_weekly.to_csv("weekly_assignments.csv", index=True, index_label="Hour")
 
     # Validate algorithm output TODO
 
@@ -97,7 +135,7 @@ def main():
     #                           config["calendar_event_location"], 
     #                           config["calendar_event_description"])
     
-    # state.serialize(config["project_id"], config["bucket_name"], prefix)    
+    state.serialize() #save the current state as a pickle 
 
 if __name__ == '__main__':
     main()

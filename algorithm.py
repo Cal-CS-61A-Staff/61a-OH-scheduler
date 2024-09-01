@@ -125,11 +125,14 @@ def run_algorithm(inputs):
     T_minus_X = T - X
 
     # Apply maximum on each variable with 0
-    term_3_1 = 0
-    for staff_i in range(m):
-        for week_i in range(n):
-            term_3_1 += cp.maximum(X_minus_T[staff_i, week_i], 0)
-            term_3_1 += cp.maximum(T_minus_X[staff_i, week_i], 0)
+    # term_3_1 = 0
+    # for staff_i in range(m):
+    #     for week_i in range(n):
+    #         term_3_1 += cp.maximum(X_minus_T[staff_i, week_i], 0)
+    #         term_3_1 += cp.maximum(T_minus_X[staff_i, week_i], 0)
+    # vectorized version:
+    term_3_1 = cp.sum(cp.pos(X_minus_T)) + cp.sum(cp.pos(T_minus_X))
+
 
 
     # 3.2 (w/o QC): Minimize Total Future Hour Violations Per Staff
@@ -142,11 +145,13 @@ def run_algorithm(inputs):
     X = A.sum(0)
 
     term_3_3 = 0
-    for week_i in range(n):
-        for day_i in range(5):
-            for hour_i in range(12):
-                term_3_3 += cp.maximum(input_oh_demand[week_i, day_i, hour_i] - X[week_i, day_i, hour_i], 0)
-                term_3_3 += cp.maximum(X[week_i, day_i, hour_i] - input_oh_demand[week_i, day_i, hour_i], 0)
+    # for week_i in range(n):
+    #     for day_i in range(5):
+    #         for hour_i in range(12):
+    #             term_3_3 += cp.maximum(input_oh_demand[week_i, day_i, hour_i] - X[week_i, day_i, hour_i], 0)
+    #             term_3_3 += cp.maximum(X[week_i, day_i, hour_i] - input_oh_demand[week_i, day_i, hour_i], 0)
+    # vectorized version, a la chatgpt4o:
+    term_3_3 = cp.sum(cp.abs(input_oh_demand - X))
 
 
 
