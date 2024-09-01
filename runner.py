@@ -4,8 +4,10 @@ import utils
 import State
 import os, sys
 import numpy as np
-# from datetime import timedelta
-# #from google.cloud import storage
+import shutil
+from datetime import timedelta
+import re
+
 from google.api_core.exceptions import Forbidden, NotFound
 import validation
 import algorithm
@@ -14,7 +16,7 @@ import pandas as pd
 # The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
 
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "key.json"
 
 # Function to get user approval for the google sheets links
 def get_user_approval(label, link):
@@ -30,6 +32,7 @@ def get_user_approval(label, link):
 
 
 def main():
+
     print("\n\033[1m[---- Welcome to the Office Hours Scheduler! ---- ]\033[0m\n")
 
     # Step 1: Read the config file
@@ -106,6 +109,7 @@ def main():
 
     state.set_assignments(assignments)
 
+    print()
     # Create CSV export of the next week's assignments
     export_dict = {"email": [], "hours_assigned": []}
     for i in range(assignments.shape[0]):

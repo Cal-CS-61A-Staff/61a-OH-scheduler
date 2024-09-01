@@ -27,7 +27,6 @@ DEMAND_RANGE = 'Demand!A2:E'
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
 
 def test():
-    
     config = config_read.read_config("config.json")
     validate_config(config)
     # Get availabilities data
@@ -124,5 +123,7 @@ def validate_availabilities(sheet):
         if (5 * 12 - num_not_available) < target_weekly_hours:
             raise ValueError(f"Email {email} has less than {target_weekly_hours} available hours")
 
+
 # if __name__ == main():
 #     main()
+

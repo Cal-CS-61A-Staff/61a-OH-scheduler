@@ -10,7 +10,11 @@ import pickle
 from bidict import bidict
 from datetime import datetime, timedelta
 import State
+<<<<<<< HEAD
 #import io
+=======
+import io
+>>>>>>> b6ab338 (great progress by shm has been made in deciphering this code)
 #from google.cloud import storage
 import config_read
 
@@ -70,7 +74,11 @@ def get_demand(sheet_id, range, total_weeks):
         np_array: OH demand. Shape: (total_weeks, days, times)
     """
     values = get_sheet_values(sheet_id, range)
+<<<<<<< HEAD
     #print(values)
+=======
+    print(values)
+>>>>>>> b6ab338 (great progress by shm has been made in deciphering this code)
     if values == [[]]:
         raise Exception('No OH demand information found.')
     
