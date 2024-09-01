@@ -4,14 +4,14 @@ import re
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import collections
+#import collections
 import numpy as np
 import pickle
 from bidict import bidict
 from datetime import datetime, timedelta
 import State
-import io
-from google.cloud import storage
+#import io
+#from google.cloud import storage
 import config_read
 
 # Service Account Scopes
@@ -31,15 +31,24 @@ def get_sheet_values(spread_sheet_id, range):
     """
 
     # Creating credentials
-    creds = service_account.Credentials.from_service_account_file(
-        "credentials.json", scopes=SCOPES
-    )
+    try:
+        creds = service_account.Credentials.from_service_account_file(
+            "credentials.json", scopes=SCOPES
+        )
+    except FileNotFoundError:
+        print("Error: credentials.json not found. \nFollow instructions in README.md to get your credentials.json key!!")
+        exit(1)  
 
     service = build('sheets', 'v4', credentials = creds)
 
-    # Calling the Sheets API for values (if this errors, that's fine, the Cloud Function will just crash)
+    # Calling the Sheets API for values in the spreadsheet
     sheet = service.spreadsheets()
-    result = sheet.values().get(spreadsheetId=spread_sheet_id, range=range).execute()
+    try:
+        result = sheet.values().get(spreadsheetId=spread_sheet_id, range=range).execute()
+    except HttpError as e:
+        print(f"Error: {e}")
+        print("(Did you remember to share the google sheet with the service account email?\nTry checking the list of users each sheet is shared with.)")
+        exit(1)
     values = result.get('values', [])
 
     return values
@@ -61,6 +70,7 @@ def get_demand(sheet_id, range, total_weeks):
         np_array: OH demand. Shape: (total_weeks, days, times)
     """
     values = get_sheet_values(sheet_id, range)
+    #print(values)
     if values == [[]]:
         raise Exception('No OH demand information found.')
     
@@ -142,15 +152,32 @@ def get_availabilities(sheet_id, range):
     
     rows = values[1:]
     for row in rows:
+        # Let's go through the spreadsheet and convert everything into a number we can actually use
         row[State.StaffMember.TOTAL_WEEKLY_HOURS_INDEX] = int(row[State.StaffMember.TOTAL_WEEKLY_HOURS_INDEX])
         row[State.StaffMember.SEMESTERS_ON_STAFF_INDEX] = int(row[State.StaffMember.SEMESTERS_ON_STAFF_INDEX])
         row[State.StaffMember.SEMESTER_AS_AI_INDEX] = int(row[State.StaffMember.SEMESTER_AS_AI_INDEX])
-        row[State.StaffMember.WEEKLY_OH_HOURS_INDEX] = int(row[State.StaffMember.WEEKLY_OH_HOURS_INDEX])
-        row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX] = int(row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX])
+        
+        #GET WEEKLY OH HOURS
+        # some people put weird things in this column like "n/a" which is not a number therefore the bane of our existence
+        try:
+            row[State.StaffMember.WEEKLY_OH_HOURS_INDEX] = int(row[State.StaffMember.WEEKLY_OH_HOURS_INDEX])
+        except:
+            row[State.StaffMember.WEEKLY_OH_HOURS_INDEX] = 3 #default to 3
 
+         #GET CONTIGUOUS HOURS
+         # sometimes people put a range of contiguous hours and this is not a number therefore the bane of our existence
+        try: 
+            row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX] = int(row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX].split(" ")[0])
+        except:
+            row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX] = 2 #Default to 2
+        
+         #GET AVAILABILITIES
         for i in State.StaffMember.AVAILABILITIES_INDICES:
-            preference = extract_preference(row[i])
-            row[i] = preference
+            try:    
+                row[i] = int(row[i])
+            except:
+                # because some of the values are like "1 - I'd love this time", lets grab the first number.
+                row[i] = int(row[i].split(" ")[0]) 
     return rows
 
 def create_5x12_np_array(input_list):
@@ -186,37 +213,6 @@ def create_5x12_np_array(input_list):
 
     return array
 
-def extract_preference(str):
-    """
-    Takes in a string representing preference for a time slot in the
-    availabilities spreadsheet, which can take the forms of:
-    "1 - I'd love this time", "2", "3 - I'd be ok with this", "4", or "5 - Not Possible.", and
-    extracts just the first number as an int
-
-    Args:
-        str (string): string representing preference for a time slot in the availabilities spreadsheet 
-
-    Raises:
-        ValueError: If the first character of the input string is not a number.
-
-    Returns:
-        num (int): The first number in the input string.
-    """
-    if not str:
-        raise ValueError('There was no preference input for this time slot.')
-    
-    # Extract the first character from the string
-    num_str = str[0]
-    
-    # Check if the character is a digit
-    if not num_str.isdigit():
-        raise ValueError('The first character of the input string must be a digit.')
-    
-    # Convert the string to an integer
-    num = int(num_str)
-
-    return num
-
 def doubly_mapped_dictionary(input_dict):
     """
     This function takes a dictionary as input and creates a new dictionary 
@@ -244,46 +240,6 @@ def doubly_mapped_dictionary(input_dict):
         output_dict[value] = key
 
     return output_dict
-
-def deserialize(project_id, bucket_name, week_num, weeks_skipped, prefix=None):
-    """
-    Deserializes objects from the specified folder for the given week. 
-    Also deserializes objects form previous weeks so that prev_state is populated.
-
-    Args:
-        folder (str): Path to the folder containing the serialized objects.
-        week_num (int): Week number to start deserialization from.
-
-    Returns:
-        state: The deserialized state object for week_num.
-    """
-    # Check each file and only deserialize all states below or equal to week_num
-    deserialized_objects = [None] * (week_num - weeks_skipped)
-
-    client = storage.Client(project=project_id)
-    bucket = client.bucket(bucket_name)
-
-    target_filename = '{}/{}.pkl'.format(prefix, week_num)
-    blobs = bucket.list_blobs(prefix=prefix)  # List all blobs with the given prefix
-
-    for blob in blobs:
-        print(blob.name)
-        if blob.name.endswith('.pkl'):
-            no_prefix_blob_name = os.path.basename(blob.name)
-            name = no_prefix_blob_name.split('.')[0]
-            if (not name.isdigit()):
-                continue
-            current_week_num = int(name)
-            pickled_data = blob.download_as_bytes()
-            data = pickle.loads(pickled_data)
-            deserialized_objects[current_week_num - weeks_skipped - 1] = data
-    
-    # Link states
-    for i in range(len(deserialized_objects) - 1):
-        deserialized_objects[i+1].prev_state = deserialized_objects[i]
-    
-    # Return the state object for the current week
-    return deserialized_objects[-1]
 
 def get_latest_week(project_id, bucket_name, prefix=None):
     """Returns the largest week number from the filenames in the google bucket.
@@ -427,3 +383,84 @@ if __name__ == '__main__':
         last_state = None
     
     last_state.print_algo_outputs()
+
+def deserialize(week_num, weeks_skipped=1, folder_path='outputs/pickles'):
+    """
+    Deserializes objects from the specified local folder. 
+    Also deserializes objects from previous weeks so that prev_state is populated.
+
+    Args:
+        folder_path (str): Path to the folder containing the serialized objects.
+        week_num (int): Week number to start deserialization from.
+        weeks_skipped (int): Number of weeks to skip when deserializing.
+
+    Returns:
+        state: The deserialized state object for week_num.
+    """
+    # Check each file and only deserialize all states up to and including week_num
+    deserialized_objects = [None] * (week_num - weeks_skipped)
+
+    # Iterate through the folder and load each pickle file
+    for file_name in sorted(os.listdir(folder_path)):
+        if file_name.endswith('.pkl'):
+            name = os.path.splitext(file_name)[0]
+            if not name.isdigit():
+                continue
+            
+            current_week_num = int(name)
+            if weeks_skipped < current_week_num <= week_num:
+                file_path = os.path.join(folder_path, file_name)
+                with open(file_path, 'rb') as file:
+                    data = pickle.load(file)
+                deserialized_objects[current_week_num - weeks_skipped - 1] = data
+
+    # Link states
+    for i in range(len(deserialized_objects) - 1):
+        if deserialized_objects[i+1] is not None:
+            deserialized_objects[i+1].prev_state = deserialized_objects[i]
+
+    # Return the state object for the current week
+    return deserialized_objects[-1]
+
+
+# -------- deprecated ------- #
+def remote_deserialize(project_id, bucket_name, week_num, weeks_skipped, prefix=None):
+    """
+    deprecated because shm didn't want to set up google cloud storage
+    Deserializes objects from the specified Google Cloud Storage folder
+    Also deserializes objects form previous weeks so that prev_state is populated.
+
+    Args:
+        folder (str): Path to the folder containing the serialized objects.
+        week_num (int): Week number to start deserialization from.
+
+    Returns:
+        state: The deserialized state object for week_num.
+    """
+    # Check each file and only deserialize all states below or equal to week_num
+    deserialized_objects = [None] * (week_num - weeks_skipped)
+
+    client = storage.Client(project=project_id)
+    bucket = client.bucket(bucket_name)
+
+    target_filename = '{}/{}.pkl'.format(prefix, week_num)
+    blobs = bucket.list_blobs(prefix=prefix)  # List all blobs with the given prefix
+
+    for blob in blobs:
+        print(blob.name)
+        if blob.name.endswith('.pkl'):
+            no_prefix_blob_name = os.path.basename(blob.name)
+            name = no_prefix_blob_name.split('.')[0]
+            if (not name.isdigit()):
+                continue
+            current_week_num = int(name)
+            pickled_data = blob.download_as_bytes()
+            data = pickle.loads(pickled_data)
+            deserialized_objects[current_week_num - weeks_skipped - 1] = data
+    
+    # Link states
+    for i in range(len(deserialized_objects) - 1):
+        deserialized_objects[i+1].prev_state = deserialized_objects[i]
+    
+    # Return the state object for the current week
+    return deserialized_objects[-1]

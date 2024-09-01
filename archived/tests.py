@@ -4,7 +4,6 @@ import State
 from config_read import *
 import os
 import shutil
-from google.cloud import storage
 import numpy as np
 import config_read
 import validation
@@ -16,23 +15,23 @@ sheets = ["https://docs.google.com/spreadsheets/d/1zL-lB4KNGmGz-CMAuAb8c_UBtlanw
 AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
 DEMAND_RANGE = 'Demand!A2:E'
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "key.json"
 
-def delete_files_with_prefix(project_id, bucket_name, prefix):
-    # Create a client object for interacting with the Google Cloud Storage API
-    client = storage.Client(project=project_id)
+# def delete_files_with_prefix(project_id, bucket_name, prefix):
+#     # Create a client object for interacting with the Google Cloud Storage API
+#     client = storage.Client(project=project_id)
     
-    # Get the bucket object
-    bucket = client.get_bucket(bucket_name)
+#     # Get the bucket object
+#     bucket = client.get_bucket(bucket_name)
     
-    # List all the files in the bucket with the given prefix
-    blobs = bucket.list_blobs(prefix=prefix)
+#     # List all the files in the bucket with the given prefix
+#     blobs = bucket.list_blobs(prefix=prefix)
     
-    # Delete each file with the specified prefix
-    for blob in blobs:
-        blob.delete()
+#     # Delete each file with the specified prefix
+#     for blob in blobs:
+#         blob.delete()
     
-    print(f"All files with prefix '{prefix}' have been deleted from the bucket '{bucket_name}'.")
+#     print(f"All files with prefix '{prefix}' have been deleted from the bucket '{bucket_name}'.")
         
 def basic_test():
     """Tests for 2 students who only have 3 slots available every week, which never changes, that matches up perfectly with OH_demand.

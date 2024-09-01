@@ -5,24 +5,32 @@ import numpy as np
 import pickle
 import copy
 from bidict import bidict
-from google.cloud import storage
+#from google.cloud import storage
 import io
+
+# The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
+AVAILABILITIES_RANGE = 'Form Responses 1!B1:BQ'
+DEMAND_RANGE = 'Demand!A2:E'
 
 class StaffMember:
     """
     Represents an individual course staff member
     """
 
-    # Indices of the data in the availabilities spreadsheet. WARNING: If the form is changed,
+
+    # Indices of the data in the availabilities spreadsheet. 
+    # First column = 0, second column = 1, etc.
+    # WARNING: If the form is changed,
     # these indices must be updated.
     EMAIL_ADDRESS_INDEX = 0
-    APPOINTED_POSITION_INDEX = 1
-    TOTAL_WEEKLY_HOURS_INDEX = 2 # the number of hours per week a staff member's total appointment is
-    SEMESTERS_ON_STAFF_INDEX = 3
-    SEMESTER_AS_AI_INDEX = 4
-    WEEKLY_OH_HOURS_INDEX = 5
-    PREFERRED_CONTIGUOUS_HOURS_INDEX = 6
-    AVAILABILITIES_INDICES = range(7, 67) # 5 * 12 slots
+    WHICH_COURSE = 1
+    APPOINTED_POSITION_INDEX = 2
+    TOTAL_WEEKLY_HOURS_INDEX = 3 # the number of hours per week a staff member's total appointment is
+    SEMESTERS_ON_STAFF_INDEX = 4
+    SEMESTER_AS_AI_INDEX = 5
+    WEEKLY_OH_HOURS_INDEX = 6
+    PREFERRED_CONTIGUOUS_HOURS_INDEX = 7
+    AVAILABILITIES_INDICES = range(8, 68) # 5 * 12 slots
 
     def __init__(self, data_row, weeks_left):
         """Initializes a new StaffMember object.
@@ -415,41 +423,40 @@ class State:
                     raise ValueError("bi_mappings do not match up between states. Stop.")
             prev = prev.prev_state
         
-    def serialize(self, project_id, bucket_name, prefix=None):
-        """Saves this object using pickle. Prev_state should not be referenced while this is serializing.
-        As all previous states are deserialized as a result of this state being serialized, we recursively
-        serialize each previous state as well.
+    def serialize(self, folder_path='outputs/pickles', file_name=None):
+        """
+        Saves this object using pickle to a LOCAL folder called pickles.
+
+        Args:
+            folder_path (str): Path to the folder where the pickle file should be saved.
+            file_name (str, optional): Name of the pickle file. Defaults to the state's week number.
 
         Returns:
             None
         """
+        # Ensure the folder exists
+        os.makedirs(folder_path, exist_ok=True)
+
+        # Temporarily remove the reference to prev_state to avoid recursive serialization
         place_holder = self.prev_state
         self.prev_state = None
-        object_name = '{}/{}.pkl'.format(prefix, self.week_num)
 
-        # Initialize a Google Cloud Storage client
-        storage_client = storage.Client(project=project_id)
-        bucket = storage_client.get_bucket(bucket_name)
+        if file_name is None:
+            file_name = f'{self.week_num}.pkl'
+
+        file_path = os.path.join(folder_path, file_name)
 
         try:
-            blob = storage.Blob(object_name, bucket)
-            blob.delete()
-        except Exception as e:
-            print(f"Creating new blob for state {self.week_num}")
-        try:
-            # Pickle the Python object to a byte stream
-            byte_stream = io.BytesIO()
-            pickle.dump(self, byte_stream)
-            
-            # Reset stream position to the beginning and upload
-            byte_stream.seek(0)
-            blob = bucket.blob(object_name)
-            blob.upload_from_file(byte_stream)
-            print(f"File uploaded successfully for state {self.week_num}")
+            # Serialize the state object and save it to the specified file
+            with open(file_path, 'wb') as file:
+                pickle.dump(self, file)
+            print(f"File saved successfully as {file_path}")
         except Exception as e:
             raise RuntimeError(f"Something went wrong while serializing state #{self.week_num}. Error: {str(e)}")
         finally:
+            # Restore the prev_state reference
             self.prev_state = place_holder
+
     
     def __str__(self):
         prev_state_str = str(self.prev_state.week_num) if self.prev_state else "None"
@@ -487,3 +494,42 @@ class State:
             f"Changed hours: {values[7]}\n",
             f"Non day one indices: {values[8]}\n"
         )
+
+# ------- deprecated ------- #
+    def remote_serialize(self, project_id, bucket_name, prefix=None):
+        """
+        Uses google cloud storage. Deprecated because shm didn't want to set up google cloud storage. 
+        Saves this object using pickle. Prev_state should not be referenced while this is serializing.
+        As all previous states are deserialized as a result of this state being serialized, we recursively
+        serialize each previous state as well.
+
+        Returns:
+            None
+        """
+        place_holder = self.prev_state
+        self.prev_state = None
+        object_name = '{}/{}.pkl'.format(prefix, self.week_num)
+
+        # Initialize a Google Cloud Storage client
+        storage_client = storage.Client(project=project_id)
+        bucket = storage_client.get_bucket(bucket_name)
+
+        try:
+            blob = storage.Blob(object_name, bucket)
+            blob.delete()
+        except Exception as e:
+            print(f"Creating new blob for state {self.week_num}")
+        try:
+            # Pickle the Python object to a byte stream
+            byte_stream = io.BytesIO()
+            pickle.dump(self, byte_stream)
+            
+            # Reset stream position to the beginning and upload
+            byte_stream.seek(0)
+            blob = bucket.blob(object_name)
+            blob.upload_from_file(byte_stream)
+            print(f"File uploaded successfully for state {self.week_num}")
+        except Exception as e:
+            raise RuntimeError(f"Something went wrong while serializing state #{self.week_num}. Error: {str(e)}")
+        finally:
+            self.prev_state = place_holder
