@@ -37,7 +37,7 @@ def main():
     
     # Step 2: Print links and ranges for user approval
     print("\033[1m[ ---- Current Settings: ---- ]\033[0m\n")
-    print(f"Availabilities Sheet Link: \n{config['availabilities_link']}]\n")
+    print(f"Availabilities Sheet Link: \n{config['availabilities_link']}\n")
     print(f"Demand Sheet Link: \n{config['demand_link']}")
     print("\nRelevant Sheet Ranges:")
     print(f"- AVAILABILITIES_RANGE = '{config['AVAILABILITIES_RANGE']}")
@@ -46,7 +46,7 @@ def main():
     # Ask for user approval
     approval = input("\n\033[1mDoes everything look correct? (y/n): \033[0m").strip().lower()
     if approval != 'y':
-        print("Please edit config.json and runner.py, then re-run the program.")
+        print("Please edit config.json, then re-run the program.")
         sys.exit(1)
 
     AVAILABILITIES_RANGE = config["AVAILABILITIES_RANGE"]

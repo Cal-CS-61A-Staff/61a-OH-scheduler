@@ -41,9 +41,14 @@ def get_sheet_values(spread_sheet_id, range):
 
     service = build('sheets', 'v4', credentials = creds)
 
-    # Calling the Sheets API for values (if this errors, that's fine, the Cloud Function will just crash)
+    # Calling the Sheets API for values in the spreadsheet
     sheet = service.spreadsheets()
-    result = sheet.values().get(spreadsheetId=spread_sheet_id, range=range).execute()
+    try:
+        result = sheet.values().get(spreadsheetId=spread_sheet_id, range=range).execute()
+    except HttpError as e:
+        print(f"Error: {e}")
+        print("(Did you remember to share the google sheet with the service account email?\nTry checking the list of users each sheet is shared with.)")
+        exit(1)
     values = result.get('values', [])
 
     return values

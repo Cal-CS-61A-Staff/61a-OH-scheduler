@@ -2,6 +2,12 @@ from cvxpy import *
 import numpy as np
 import cvxpy as cp
 from time import perf_counter
+import threading
+import sys
+import itertools
+import time
+
+done = False
 
 # Defining weights
 U_3_1 = 400
@@ -16,6 +22,14 @@ lambda_func = lambda x: np.exp(-0.2 * x)
 # Mapping between rating and displeasure used in term 3.4 (minimize displeasure)
 RATE_TO_DISPLEASURE_MAPPING = {1: 0, 2: 2, 3: 8, 4: 16, 5: 1e8}
 
+
+# Function to display a cute lil loading spinner
+def loading_spinner(message="Loading..."):
+    spinner = itertools.cycle(['|', '/', '-', '\\'])
+    while not done:
+        sys.stdout.write(f"\r{message} " + next(spinner))
+        sys.stdout.flush()
+        time.sleep(0.1)
 
 
 def var_to_np(decision_var):
@@ -32,6 +46,7 @@ def var_to_np(decision_var):
     return vfunc(decision_var)
 
 def run_algorithm(inputs):
+    global done
     input_oh_demand = inputs[0]                         # (# of future weeks, 5, 12)
     input_previous_weeks_assignments = inputs[1]        # (# of day one staff, # of past weeks, 5, 12)
     input_staff_availabilities = inputs[2]              # (# of all staff, 5, 12)
@@ -57,7 +72,11 @@ def run_algorithm(inputs):
         p = None
         print("Data for previous week not found. Removing past consistency constraint.")
 
-    print("Setting up algorithm...")
+    # Start spinner for setup
+    done = False
+    spinner_thread = threading.Thread(target=loading_spinner, args=("Setting up algorithm...",))
+    spinner_thread.start()
+
     # Define the decision variable
     A = np.empty(shape = (m, n, 5, 12), dtype = object)
     for i in range(m):
@@ -65,7 +84,9 @@ def run_algorithm(inputs):
             for k in range(5):
                 for l in range(12):
                     A[i, j, k, l] = cp.Variable(boolean=True)
-                    
+
+
+    
     # ---------------- Hard Constraints (CP constraints) ----------------
     constraints = []
 
@@ -199,17 +220,30 @@ def run_algorithm(inputs):
 
     obj = cp.Minimize(U_3_1 * term_3_1 + U_3_2 * term_3_2 + U_3_3 * term_3_3 + U_3_4 * term_3_4 + U_3_5 * term_3_5)
 
+     # Stop spinner
+    done = True
+    spinner_thread.join()
 
     # Optimization Problem
     print(f"Number of variables: {m * n * 5 * 12}")
     print(f"Number of constraints: {len(constraints)}")
 
     print("Running algorithm...")
+     # Start spinner for solving
+    done = False
+    spinner_thread = threading.Thread(target=loading_spinner, args=("...now solving...this may take a while...",))
+    spinner_thread.start()
+
     start = perf_counter()
     prob = Problem(obj, constraints)
-    print("...solving...")
+
     prob.solve(verbose=False)
-    print(f"Algorithm status: {prob.status}. Objective value: {prob.value}")
+
+    # Stop the spinner
+    done = True
+    spinner_thread.join()
+
+    print(f"\nAlgorithm status: {prob.status}. Objective value: {prob.value}")
     print(f"Time elapsed: {perf_counter() - start}")
 
     all_assignments = var_to_np(A)
