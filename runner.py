@@ -8,22 +8,22 @@ import numpy as np
 import shutil
 from datetime import timedelta
 import re
-from google.cloud import storage
+#from google.cloud import storage
 from google.api_core.exceptions import Forbidden, NotFound
 import validation
 import algorithm
 import pandas as pd
 
 # The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
-AVAILABILITIES_RANGE = 'Form Responses 1!B1:BP'
+AVAILABILITIES_RANGE = 'Form Responses 1!B1:BQ'
 DEMAND_RANGE = 'Demand!A2:E'
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "key.json"
 
 
 def main():
     # Config Read
-    config = config_read.read_config("config.json")
+    config = config_read.read_config("key.json")
     validation.validate_config(config)
 
     # Get availabilities data
@@ -69,6 +69,7 @@ def main():
 
     state.set_assignments(assignments)
 
+    print()
     # Create CSV export of the next week's assignments
     export_dict = {"email": [], "hours_assigned": []}
     for i in range(assignments.shape[0]):

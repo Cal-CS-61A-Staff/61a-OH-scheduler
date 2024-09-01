@@ -1,6 +1,8 @@
 import State
 import re
-from google.cloud import storage
+import config_read
+import utils, os
+#from google.cloud import storage
 from google.api_core.exceptions import Forbidden, NotFound
 
 CONFIG_KEYS = [
@@ -18,6 +20,21 @@ CONFIG_KEYS = [
     "calendar_event_location",
     "calendar_event_description"
 ]
+# The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
+AVAILABILITIES_RANGE = 'Form Responses 1!B1:BQ'
+DEMAND_RANGE = 'Demand!A2:E'
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credentials.json"
+
+def main():
+    config = config_read.read_config("config.json")
+    validate_config(config)
+    # Get availabilities data
+    availabilities_id = config_read.get_google_sheets_id(config["availabilities_link"])
+    availabilities = utils.get_availabilities(availabilities_id, AVAILABILITIES_RANGE)
+    validate_availabilities(availabilities)
+    validate_id = config_read.get_google_sheets_id(config["demand_link"])
+    demand = utils.get_demand(validate_id, DEMAND_RANGE, config["weeks"])
 
 
 def validate_config(config):
@@ -36,15 +53,16 @@ def validate_config(config):
             raise ValueError(f"Config field {key} is empty")
         
     # Check if google project exists and if we have permission
-    client = storage.Client(project=config["project_id"])
+    # client = storage.Client(project=config["project_id"])
     
-    # Check if bucket exists and we have permission
-    try:
-        bucket = client.bucket(config["bucket_name"])
-        if not bucket.exists():
-            raise NotFound(f"Bucket {config['bucket_name']} does not exist in the project: {config['project_id']}")
-    except Forbidden:
-        raise Forbidden(f"No access to the bucket {config['bucket_name']} in the project: {config['project_id']}")
+    # # Check if bucket exists and we have permission
+    # try:
+    #     bucket = client.bucket(config["bucket_name"])
+    #     if not bucket.exists():
+    #         raise NotFound(f"Bucket {config['bucket_name']} does not exist in the project: {config['project_id']}")
+    # except Forbidden:
+    #     raise Forbidden(f"No access to the bucket {config['bucket_name']} in the project: {config['project_id']}")
+    
     
     if config["weekly_hour_multiplier"] < 1:
         raise ValueError("Weekly hour multiplier must be at least 1")
@@ -61,7 +79,6 @@ def validate_config(config):
     # Make sure all keys are in dictionary
     assert set(CONFIG_KEYS) - set(config.keys()) == set(), f"config.json is missing the following keys: {set(CONFIG_KEYS) - set(config.keys())}"
 
-    
 def validate_availabilities(sheet):
     """Validates that the availabilities sheet has all the required fields and that the values are valid
 
@@ -71,8 +88,9 @@ def validate_availabilities(sheet):
     Returns:
         None
     """
-
+    print(sheet)
     for row in sheet:
+        print(f'row: {row}')
         email = row[State.StaffMember.EMAIL_ADDRESS_INDEX]
 
         # Check if email is valid
@@ -100,4 +118,6 @@ def validate_availabilities(sheet):
 
         if (5 * 12 - num_not_available) < target_weekly_hours:
             raise ValueError(f"Email {email} has less than {target_weekly_hours} available hours")
-    
+
+if __name__ == main():
+    main()

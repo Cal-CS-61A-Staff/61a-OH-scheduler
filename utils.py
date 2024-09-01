@@ -11,7 +11,7 @@ from bidict import bidict
 from datetime import datetime, timedelta
 import State
 import io
-from google.cloud import storage
+#from google.cloud import storage
 import config_read
 
 # Service Account Scopes
@@ -61,6 +61,7 @@ def get_demand(sheet_id, range, total_weeks):
         np_array: OH demand. Shape: (total_weeks, days, times)
     """
     values = get_sheet_values(sheet_id, range)
+    print(values)
     if values == [[]]:
         raise Exception('No OH demand information found.')
     
@@ -142,15 +143,32 @@ def get_availabilities(sheet_id, range):
     
     rows = values[1:]
     for row in rows:
+        # Let's go through the spreadsheet and convert everything into a number we can actually use
         row[State.StaffMember.TOTAL_WEEKLY_HOURS_INDEX] = int(row[State.StaffMember.TOTAL_WEEKLY_HOURS_INDEX])
         row[State.StaffMember.SEMESTERS_ON_STAFF_INDEX] = int(row[State.StaffMember.SEMESTERS_ON_STAFF_INDEX])
         row[State.StaffMember.SEMESTER_AS_AI_INDEX] = int(row[State.StaffMember.SEMESTER_AS_AI_INDEX])
-        row[State.StaffMember.WEEKLY_OH_HOURS_INDEX] = int(row[State.StaffMember.WEEKLY_OH_HOURS_INDEX])
-        row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX] = int(row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX])
+        
+        #GET WEEKLY OH HOURS
+        # some people put weird things in this column like "n/a" which is not a number therefore the bane of our existence
+        try:
+            row[State.StaffMember.WEEKLY_OH_HOURS_INDEX] = int(row[State.StaffMember.WEEKLY_OH_HOURS_INDEX])
+        except:
+            row[State.StaffMember.WEEKLY_OH_HOURS_INDEX] = 3 #default to 3
 
+         #GET CONTIGUOUS HOURS
+         # sometimes people put a range of contiguous hours and this is not a number therefore the bane of our existence
+        try: 
+            row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX] = int(row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX].split(" ")[0])
+        except:
+            row[State.StaffMember.PREFERRED_CONTIGUOUS_HOURS_INDEX] = 2 #Default to 2
+        
+         #GET AVAILABILITIES
         for i in State.StaffMember.AVAILABILITIES_INDICES:
-            preference = extract_preference(row[i])
-            row[i] = preference
+            try:    
+                row[i] = int(row[i])
+            except:
+                # because some of the values are like "1 - I'd love this time", lets grab the first number.
+                row[i] = int(row[i].split(" ")[0]) 
     return rows
 
 def create_5x12_np_array(input_list):
@@ -185,37 +203,6 @@ def create_5x12_np_array(input_list):
     array = array.reshape((5, 12))
 
     return array
-
-def extract_preference(str):
-    """
-    Takes in a string representing preference for a time slot in the
-    availabilities spreadsheet, which can take the forms of:
-    "1 - I'd love this time", "2", "3 - I'd be ok with this", "4", or "5 - Not Possible.", and
-    extracts just the first number as an int
-
-    Args:
-        str (string): string representing preference for a time slot in the availabilities spreadsheet 
-
-    Raises:
-        ValueError: If the first character of the input string is not a number.
-
-    Returns:
-        num (int): The first number in the input string.
-    """
-    if not str:
-        raise ValueError('There was no preference input for this time slot.')
-    
-    # Extract the first character from the string
-    num_str = str[0]
-    
-    # Check if the character is a digit
-    if not num_str.isdigit():
-        raise ValueError('The first character of the input string must be a digit.')
-    
-    # Convert the string to an integer
-    num = int(num_str)
-
-    return num
 
 def doubly_mapped_dictionary(input_dict):
     """

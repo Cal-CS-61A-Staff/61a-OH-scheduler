@@ -5,24 +5,32 @@ import numpy as np
 import pickle
 import copy
 from bidict import bidict
-from google.cloud import storage
+#from google.cloud import storage
 import io
+
+# The range of both spreadsheet. This should not change unless the forms/the demand spreadsheet has been edited.
+AVAILABILITIES_RANGE = 'Form Responses 1!B1:BQ'
+DEMAND_RANGE = 'Demand!A2:E'
 
 class StaffMember:
     """
     Represents an individual course staff member
     """
 
-    # Indices of the data in the availabilities spreadsheet. WARNING: If the form is changed,
+
+    # Indices of the data in the availabilities spreadsheet. 
+    # First column = 0, second column = 1, etc.
+    # WARNING: If the form is changed,
     # these indices must be updated.
     EMAIL_ADDRESS_INDEX = 0
-    APPOINTED_POSITION_INDEX = 1
-    TOTAL_WEEKLY_HOURS_INDEX = 2 # the number of hours per week a staff member's total appointment is
-    SEMESTERS_ON_STAFF_INDEX = 3
-    SEMESTER_AS_AI_INDEX = 4
-    WEEKLY_OH_HOURS_INDEX = 5
-    PREFERRED_CONTIGUOUS_HOURS_INDEX = 6
-    AVAILABILITIES_INDICES = range(7, 67) # 5 * 12 slots
+    WHICH_COURSE = 1
+    APPOINTED_POSITION_INDEX = 2
+    TOTAL_WEEKLY_HOURS_INDEX = 3 # the number of hours per week a staff member's total appointment is
+    SEMESTERS_ON_STAFF_INDEX = 4
+    SEMESTER_AS_AI_INDEX = 5
+    WEEKLY_OH_HOURS_INDEX = 6
+    PREFERRED_CONTIGUOUS_HOURS_INDEX = 7
+    AVAILABILITIES_INDICES = range(8, 68) # 5 * 12 slots
 
     def __init__(self, data_row, weeks_left):
         """Initializes a new StaffMember object.
