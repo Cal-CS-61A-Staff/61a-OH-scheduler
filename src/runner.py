@@ -67,7 +67,7 @@ def main():
 
     selected_option = None
     config_path: Path | None = None
-
+    # Determine the correct config file based on the user's choice (env var or manual selection)
     env_class_name = os.environ.get(ENV_CLASS_NAME)
     if env_class_name:
         selected_option = find_option_by_class(class_options, env_class_name)
@@ -147,7 +147,7 @@ def main():
     print("  [1] Run the OH scheduler (generate CSV file)")
     print("  [2] Send calendar events (CSV file to calendar event invites)")
     choice = input("Enter your choice (1 or 2): ").strip()
-    # Determine the correct config file based on the user's choice
+    
     if choice == '2':
         week_num = int(input("Enter the week number you'd like to send emails for. \n(e.g., enter 5 for week 5 of the semester): ").strip())
         logger.info("Preparing calendar export for week %s", week_num)
@@ -174,10 +174,17 @@ def main():
     approval = input("\n\033[1mDoes everything look correct? (y/n): \033[0m").strip().lower()
     if approval != 'y':
         print("Please edit the relevant config under configs/, then re-run the program.")
+        logger.info("User did not approve configuration; exiting.")
         sys.exit(1)
 
     AVAILABILITIES_RANGE = config["AVAILABILITIES_RANGE"]
     DEMAND_RANGE = config["DEMAND_RANGE"]
+
+    logger.info(f"Using config for class: {config['class']}")
+    logger.info(f"Using availabilities link: {config['availabilities_link']}")
+    logger.info(f"Using demand link: {config['demand_link']}")
+    logger.info(f"Using AVAILABILITIES_RANGE: {AVAILABILITIES_RANGE}")
+    logger.info(f"Using DEMAND_RANGE: {DEMAND_RANGE}")
 
     # Step 3: Fetch and validate availabilities data
     availabilities_id = config_read.get_google_sheets_id(config["availabilities_link"])
@@ -273,7 +280,8 @@ def run_scheduler(config, demand, availabilities):
         np.save(paths.NPY_DIR / 'demand.npy', demand)
 
         state.set_assignments(assignments)
-
+        
+        # Validate no one with 0 weekly hours has been assigned any hours
         zero_target_violations = []
         for email, staff_member in state.course_staff_dict.items():
             if staff_member.weekly_oh_hours == 0:
@@ -353,6 +361,180 @@ def run_scheduler(config, demand, availabilities):
         sys.exit(0)
 
 
+def _load_fixed_ta_assignments(config: dict[str, str]) -> dict[str, dict[str, list[str]]]:
+    """
+    Load fixed TA assignments keyed by day and hour.
+
+    Returns a mapping of {day: {hour: [emails]}}.
+    """
+    fixed_path = config.get("fixed_tas")
+    if not fixed_path:
+        return {day: {} for day in calendar_time.DAYS}
+
+    csv_path = paths.CONFIG_DIR / fixed_path
+    if not csv_path.exists():
+        logging.getLogger(__name__).warning(
+            "Fixed TA roster %s was not found; proceeding without fixed assignments.",
+            csv_path,
+        )
+        return {day: {} for day in calendar_time.DAYS}
+
+    fixed_assignments: dict[str, dict[str, list[str]]] = {day: {} for day in calendar_time.DAYS}
+    with csv_path.open(newline="") as fixed_file:
+        reader = csv.DictReader(fixed_file)
+        for row in reader:
+            hour = row.get("Hour")
+            if not hour:
+                continue
+            for day in calendar_time.DAYS:
+                cell = row.get(day, "")
+                if not cell:
+                    continue
+                emails = [
+                    email.strip()
+                    for email in cell.split(",")
+                    if email.strip()
+                ]
+                if emails:
+                    fixed_assignments[day][hour] = emails
+    return fixed_assignments
+
+
+def _calculate_week_start(config: dict[str, str], week_num: int) -> datetime:
+    """Calculate the Monday of the requested week, accounting for weeks skipped."""
+    base_start_date = datetime.strptime(config["start_date"], "%Y-%m-%d")
+    weeks_skipped = int(config.get("weeks_skipped", 0))
+    return base_start_date + timedelta(weeks=week_num - 1 - weeks_skipped)
+
+
+def _parse_assignments_from_csv(
+    csv_name: str,
+    config: dict[str, str],
+    week_num: int,
+    include_fixed_tas: bool,
+) -> list[dict[str, object]]:
+    """Parse assignments from the CSV export and optionally merge fixed TA requirements."""
+    week_start = _calculate_week_start(config, week_num)
+    day_to_date = calendar_time._get_week_dates(week_start)  # pylint: disable=protected-access
+    fixed_assignments = _load_fixed_ta_assignments(config) if include_fixed_tas else {day: {} for day in calendar_time.DAYS}
+
+    assignments = []
+    with open(csv_name) as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            hour = row["Hour"]
+            for day in calendar_time.DAYS:
+                cell = row.get(day, "")
+                attendees: list[str] = []
+                if cell:
+                    for email in cell.split(","):
+                        email = email.strip()
+                        if email and email not in attendees:
+                            attendees.append(email)
+
+                for email in fixed_assignments.get(day, {}).get(hour, []):
+                    if email not in attendees:
+                        attendees.append(email)
+
+                if not attendees:
+                    continue
+
+                start_time_str = f"{day_to_date[day].strftime('%Y-%m-%d')}T{hour}:00"
+                start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M:%S")
+                end_time = start_time + timedelta(hours=1)
+
+                assignments.append(
+                    {
+                        "start_time": start_time.strftime('%Y-%m-%dT%H:%M'),
+                        "end_time": end_time.strftime('%Y-%m-%dT%H:%M'),
+                        "attendees": attendees,
+                        "day": day,
+                        "hour_key": start_time.strftime('%H:%M'),
+                    }
+                )
+
+    return assignments
+
+
+def load_weekly_demand_metadata(config, week_num):
+    """Load demand sheet metadata for the specified week keyed by (day, hour)."""
+
+    demand_id = config_read.get_google_sheets_id(config["demand_link"])
+    values = utils.get_sheet_values(demand_id, config["DEMAND_RANGE"])
+
+    metadata = {}
+    current_weeks = []
+    current_day = None
+
+    for row in values:
+        if not row or len(row) < 4:
+            continue
+
+        if row[0]:
+            weeks_str = row[0].strip()
+            current_weeks = [int(week.strip()) for week in weeks_str.split(",") if week.strip()]
+
+        if week_num not in current_weeks:
+            continue
+
+        if row[1]:
+            current_day = row[1].strip()
+
+        if not current_day:
+            continue
+
+        start_label = row[2].strip() if len(row) > 2 else ""
+        if not start_label:
+            continue
+
+        try:
+            hour_key = datetime.strptime(start_label, "%I:%M %p").strftime("%H:%M")
+        except ValueError:
+            continue
+
+        location = row[5].strip() if len(row) > 5 else ""
+        description = row[6].strip() if len(row) > 6 else ""
+        total_staff = row[7].strip() if len(row) > 7 else ""
+        comments = row[8].strip() if len(row) > 8 else ""
+
+        metadata[(current_day, hour_key)] = {
+            "location": location,
+            "description": description,
+            "total_staff": total_staff,
+            "comments": comments,
+        }
+
+    return metadata
+
+
+def _print_assignment_summary(assignments, csv_name):
+    """Print a quick summary of pulled assignments before creating events."""
+    if not assignments:
+        return
+
+    start_date = min(
+        (datetime.strptime(a['start_time'], '%Y-%m-%dT%H:%M') for a in assignments if a['attendees']),
+        default=None,
+    )
+    end_date = max(
+        (datetime.strptime(a['end_time'], '%Y-%m-%dT%H:%M') for a in assignments if a['attendees']),
+        default=None,
+    )
+
+    unique_tas = []
+    for assignment in assignments:
+        for attendee in assignment['attendees']:
+            if attendee not in unique_tas:
+                unique_tas.append(attendee)
+
+    tas_sample = ", ".join(unique_tas[:5]) if unique_tas else "No TAs found"
+
+    print(f"\nFound \033[1m{len(assignments)} assignments\033[0m in CSV file: \033[1m{csv_name}\033[0m\n")
+    if start_date and end_date:
+        print(f"\033[1mSpanning dates:\033[0m\n{start_date.strftime('%A, %B %d, %Y')} - {end_date.strftime('%A, %B %d, %Y')}\n")
+    print(f"\033[1mUnique TAs ({len(unique_tas)} total), including:\033[0m\n{tas_sample}")
+
+
 def calendar_events_from_csv(config, week_num):
     """
     Creates Google Calendar events based on assignments from a CSV file.
@@ -390,49 +572,39 @@ def calendar_events_from_csv(config, week_num):
         logger.error("Assignment CSV %s not found", csv_name)
         sys.exit(1)
 
-    # Ask the user to confirm the dates
-    start_date_str = input("What is the start date of the next week? (mm/dd):\n").strip()
-    start_date = start_date_str.split("/")
-    year_of_semester = int(config['semester'][2:])
-    try:
-        start_date = datetime(year_of_semester, int(start_date[0]), int(start_date[1]))
-    except ValueError:
-        print("Invalid date format. Please use mm/dd.")
-        logger.warning("Invalid start date format provided: %s", start_date_str)
-        return
+    include_fixed_tas = False
+    fixed_path = config.get("fixed_tas")
+    if fixed_path:
+        csv_path = paths.CONFIG_DIR / fixed_path
+        if csv_path.exists():
+            choice = input(
+                f"Include fixed TAs from {fixed_path}? (y/n): "
+            ).strip().lower()
+            include_fixed_tas = choice == 'y'
+        else:
+            logger.warning("Configured fixed_tas file %s not found.", csv_path)
 
-    # Ask for number of TAs per hour (if applicable)
-    total_tas = input("Total number of TAs per hour (default all assigned)?\n(Press enter to use assigned TAs): ").strip()
-    total_tas = int(total_tas) if total_tas else None
+    assignments = _parse_assignments_from_csv(csv_name, config, week_num, include_fixed_tas)
+    if not assignments:
+        print("No assignments with attendees found; aborting calendar export.")
+        logger.warning("No assignments extracted from %s for week %s.", csv_name, week_num)
+        return []
 
-    assignments = []
-    with open(csv_name) as csv_file:
-        csv_reader = csv.DictReader(csv_file)
-        day_to_date = calendar_time._get_week_dates(start_date)  # pylint: disable=protected-access
+    _print_assignment_summary(assignments, csv_name)
 
-        for row in csv_reader:
-            hour = row["Hour"]
-            for day in calendar_time.DAYS:
-                if row[day] == "":
-                    continue
-                attendees = row[day].split(", ")
-                if total_tas:
-                    attendees = attendees[:total_tas]
+    print("\n\033[1mEvent Details:\033[0m")
+    print(f"Events will be named: {config['calendar_event_name']}")
+    print(f"Location: {config['calendar_event_location']}")
+    print(f"Description: {config['calendar_event_description']}")
+    print(f"Calendar ID: {config['calendar_id']}")
 
-                # Compute start and end times
-                start_time_str = f"{day_to_date[day].strftime('%Y-%m-%d')}T{hour}:00"
-                start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M:%S")
-                end_time = start_time + timedelta(hours=1)  # Assuming each slot is 1 hour long
+    final_approval = input("\nEnter 'y' to continue or 'n' to quit: ").strip().lower()
+    if final_approval != 'y':
+        print("Good-bye!")
+        return []
 
-                # Create an assignment dictionary and append to the list
-                assignment = {
-                    "start_time": start_time.strftime('%Y-%m-%dT%H:%M'),
-                    "end_time": end_time.strftime('%Y-%m-%dT%H:%M'),
-                    "attendees": list(set(attendees)),  # Remove duplicates
-                    "day": day,
-                    "hour_key": start_time.strftime('%H:%M'),
-                }
-                assignments.append(assignment)
+    demand_metadata = load_weekly_demand_metadata(config, week_num)
+    calendar_time.send_assignments_to_calendar(assignments, config, demand_metadata)
 
     return assignments
 
