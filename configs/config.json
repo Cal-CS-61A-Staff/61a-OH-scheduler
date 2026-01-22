@@ -1,0 +1,21 @@
+{
+    "demand_link": "https://docs.google.com/spreadsheets/d/1IaJhlFWDypBgchTvoPtGD-hgpQOee11Tk2Zbodiw4lE/edit?usp=sharing",
+    "availabilities_link":  "https://docs.google.com/spreadsheets/d/1uDMbISKjctWB_QrBaPFQOBbtTOk5UqOJBAI-QpxNZfk/edit?usp=sharing",
+    "AVAILABILITIES_RANGE": "Form Responses 1!B1:BQ",
+    "DEMAND_RANGE": "Demand!A2:I",
+    "project_id": "cs-61a-website",
+    "bucket_name": "oh-scheduler",
+    "class": "61a",
+    "semester": "fa25",
+    "weeks": 16, 
+    "weekly_hour_multiplier": 2,
+    "start_date": "2025-09-01",
+    "weeks_skipped": 1,
+    "calendar_event_name": "CS 61A OH",
+    "calendar_event_location": "Warren 101B",
+    "calendar_event_description": "Office Hours",
+    "calendar_event_total_staff": "",
+    "calendar_event_comments": "",
+    "fixed_tas": "fixed_tas/61A_FIXED_TAs.csv",
+    "calendar_id": "c_f369f9f1574057e5c210faf3942c6249d88f63c279d2286782d1d42a22700a92@group.calendar.google.com"
+}

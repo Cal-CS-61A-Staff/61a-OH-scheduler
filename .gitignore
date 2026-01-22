@@ -1,4 +1,10 @@
+outputs/
+*assignments*.csv
+outputs/.DS_Store
+.DS_Store
+service_credentials.json
 credentials.json
+oauth_credentials.json
 token.json
 __pycache__
 states
@@ -9,6 +15,9 @@ local_oauth_secret.json
 assignments.npy
 new_assignments.npy
 demand.npy
+.artifacts/
 local_oauth_secret_SPA.json
 query_private.ipynb
 hours_assigned.csv
+.idea/
+.venv/
