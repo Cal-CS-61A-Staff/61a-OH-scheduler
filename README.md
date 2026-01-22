@@ -10,9 +10,10 @@ updated fall 2025 by Christian
 
 1. **Clone & authenticate**
    - Clone this repo.
-   - Log into the CS61A SPA Google account and share both the availabilities and demand spreadsheets with `oh-scheduler@cs-61a-website.iam.gserviceaccount.com`.
-   - In Google Cloud Console → _IAM & Admin_ → _Service Accounts_, create/download a service account key for the scheduler. Save it as `credentials/credentials.json`.
+   - Log into the [CS61A SPA](https://calnet.berkeley.edu/calnet-departments/special-purpose-accounts-spa/log-spa) Google account  and share both the availabilities and demand spreadsheets with `oh-scheduler@cs-61a-website.iam.gserviceaccount.com`.
+   - In [Google Cloud Console](https://console.cloud.google.com/) → _IAM & Admin_ → _Service Accounts_, create/download a service account key for the scheduler. Save it as `credentials/credentials.json`.
    - Download the OAuth client (used for Calendar pushes) and save it as `credentials/oauth_credentials.json`. The OAuth token generated on first run is stored as `credentials/token.json`.
+   - If you want to script Google Forms creation, also enable the Forms API + Drive API in the same project and share the form template with the service account.
 
 2. **Python dependencies**
    - Easiest: run `python setup_env.py` to create `.venv/` and install everything from `configs/requirements.txt`.
@@ -112,6 +113,35 @@ The CLI flow:
      - `outputs/weekly_assignments/<class>_assignments_week<week>.csv` — detailed grid (hour × weekday, comma-separated emails).
 
 The optimization results and demand tensor are also cached in `.artifacts/numpy/`.
+
+---
+
+## Google Forms Helper
+
+Use `src/forms_helper.py` to copy a Google Form template and replace placeholders (e.g., `{{NAME}}`, `{{DATE}}`). Example:
+
+```python
+from src.forms_helper import create_form_from_template
+
+new_form_id = create_form_from_template(
+    template_form_id="1AbcTemplateId",
+    replacements={"{{NAME}}": "Ada", "{{DATE}}": "Oct 12"},
+    new_title="OH Intake for Ada"
+)
+print(f"Edit link: https://docs.google.com/forms/d/{new_form_id}/edit")
+
+# or populate placeholders from a scheduler config (class/semester):
+from src.forms_helper import create_form_from_template_with_config
+
+new_form_id = create_form_from_template_with_config(
+    template_form_id="1AbcTemplateId",
+    config_path="configs/config.json",  # or another config file
+    extra_replacements={"{{NAME}}": "Ada"}  # optional
+)
+print(f"Edit link: https://docs.google.com/forms/d/{new_form_id}/edit")
+```
+
+Ensure the template form is shared with the service account and that the Forms API + Drive API are enabled in the same GCP project as `credentials/credentials.json`.
 
 ---
 

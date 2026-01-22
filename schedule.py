@@ -15,10 +15,13 @@ from src.config_utils import (
 )
 
 
-def run_scheduler(class_name: str | None) -> None:
+def run_scheduler(class_name: str | None, debug: bool = False) -> None:
     """Launch the scheduler with an optional preselected class configuration."""
     env = os.environ.copy()
     options = load_class_config_options(None)
+
+    if debug:
+        env["OH_SCHEDULER_LOG_LEVEL"] = "DEBUG"
 
     if class_name:
         matched = find_option_by_class(options, class_name)
@@ -65,12 +68,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         dest="class_name",
         help="Class name to schedule (matches the 'class' field in configs).",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable verbose logging written to the log file (sets OH_SCHEDULER_LOG_LEVEL=DEBUG).",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv or sys.argv[1:])
-    run_scheduler(args.class_name)
+    run_scheduler(args.class_name, debug=args.debug)
 
 
 if __name__ == "__main__":

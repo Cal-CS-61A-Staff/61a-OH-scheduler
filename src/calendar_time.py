@@ -11,7 +11,11 @@ from zoneinfo import ZoneInfo
 from . import paths
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/calendar']
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/forms.body", 
+    "https://www.googleapis.com/auth/drive",
+]
 
 # Days we support when building schedules from the CSV export.
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
